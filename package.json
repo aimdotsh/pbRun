@@ -6,15 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "init:garmin:data": "node scripts/init-garmin-data.js"
   },
   "dependencies": {
+    "@zip.js/zip.js": "^2.8.19",
+    "axios": "^1.13.5",
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^17.2.4",
+    "fit-file-parser": "^2.3.3",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
