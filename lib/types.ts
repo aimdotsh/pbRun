@@ -48,6 +48,31 @@ export interface Activity {
   total_ascent?: number;                         // 累计爬升（米）
   total_descent?: number;                        // 累计下降（米）
 
+  // 坡度（%）
+  avg_grade?: number;                            // 平均坡度
+  avg_pos_grade?: number;                        // 平均正坡度（上坡）
+  avg_neg_grade?: number;                        // 平均负坡度（下坡）
+  max_pos_grade?: number;                        // 最大正坡度
+  max_neg_grade?: number;                        // 最大负坡度
+
+  // 训练效果与负荷
+  total_training_effect?: number;                // 有氧训练效果（0–5）
+  total_anaerobic_training_effect?: number;     // 无氧训练效果（0–5）
+  normalized_power?: number;                    // 标准化功率（瓦）
+  training_stress_score?: number;                // 训练负荷指数 TSS
+  intensity_factor?: number;                    // 强度因子 IF
+
+  // 海拔（米）
+  avg_altitude?: number;                         // 平均海拔
+  max_altitude?: number;                         // 最大海拔
+  min_altitude?: number;                         // 最低海拔
+
+  // 区间时间（秒），JSON 字符串，如 "[0,120,300,600]"
+  time_in_hr_zone?: string;                      // 心率区间时间
+  time_in_speed_zone?: string;                   // 速度区间时间
+  time_in_cadence_zone?: string;                // 步频区间时间
+  time_in_power_zone?: string;                   // 功率区间时间
+
   // 其他
   calories?: number;                             // 热量消耗（卡路里）
   average_temperature?: number;                  // 平均温度（摄氏度）
@@ -103,6 +128,23 @@ export interface ActivityLap {
   average_vertical_ratio?: number;               // 平均垂直步幅比（%）
   average_step_rate_loss?: number;               // 平均步速损失（厘米/秒）
   average_step_rate_loss_percent?: number;       // 平均步速损失百分比（%）
+
+  // 坡度（%）
+  avg_grade?: number;                            // 平均坡度
+  avg_pos_grade?: number;                        // 平均正坡度（上坡）
+  avg_neg_grade?: number;                        // 平均负坡度（下坡）
+  max_pos_grade?: number;                        // 最大正坡度
+  max_neg_grade?: number;                        // 最大负坡度
+
+  // 区间时间（秒），JSON 字符串
+  time_in_hr_zone?: string;                     // 心率区间时间
+  time_in_speed_zone?: string;                   // 速度区间时间
+  time_in_cadence_zone?: string;                 // 步频区间时间
+  time_in_power_zone?: string;                   // 功率区间时间
+
+  // 触发方式与时间戳
+  lap_trigger?: string;                          // 分段触发方式（如 manual、distance、time）
+  start_time?: string;                           // 分段开始时间（UTC）
 
   // 其他
   calories?: number;                             // 热量消耗（卡路里）

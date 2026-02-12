@@ -5,6 +5,59 @@
 const FitParser = require('fit-file-parser').default;
 const fs = require('fs').promises;
 
+/** FIT sub_sport 枚举 -> 中文展示（跑步机、户外等） */
+const SUB_SPORT_LABELS = {
+  generic: '通用',
+  treadmill: '跑步机',
+  street: '路跑',
+  trail: '越野',
+  track: '田径场',
+  indoor_running: '室内跑步',
+  spin: '动感单车',
+  indoor_cycling: '室内骑行',
+  road: '公路',
+  mountain: '山地',
+  downhill: '下坡',
+  recumbent: '卧式',
+  cyclocross: '越野自行车',
+  hand_cycling: '手摇车',
+  track_cycling: '场地自行车',
+  indoor_rowing: '室内划船',
+  elliptical: '椭圆机',
+  stair_climbing: '爬楼',
+  lap_swimming: '泳池',
+  open_water: '开放水域',
+  flexibility_training: '柔韧',
+  strength_training: '力量',
+  warm_up: '热身',
+  match: '比赛',
+  exercise: '锻炼',
+  challenge: '挑战',
+  indoor_skiing: '室内滑雪',
+  cardio_training: '有氧',
+  indoor_walking: '室内步行',
+  e_bike_fitness: '电助力健身',
+  bmx: '小轮车',
+  casual_walking: '散步',
+  speed_walking: '快走',
+  mixed_surface: '混合路面',
+  virtual_activity: '虚拟活动',
+  all: '全部',
+};
+
+/** FIT sport 枚举 -> 中文展示 */
+const SPORT_LABELS = {
+  generic: '通用',
+  running: '跑步',
+  cycling: '骑行',
+  transition: '换项',
+  fitness_equipment: '健身器械',
+  swimming: '游泳',
+  walking: '步行',
+  training: '训练',
+  all: '全部',
+};
+
 class GarminFITParser {
   constructor() {
     // FitParser is initialized per file
@@ -63,14 +116,16 @@ class GarminFITParser {
       elapsed_time: this._safeGetInt(session, 'total_elapsed_time'),
     };
 
-    // FIT Session: sport / sub_sport（区分跑步机、户外等）
+    // FIT Session: sport / sub_sport -> 存为中文展示（跑步机、路跑、越野等）
     const sport = session.sport;
     const subSport = session.sub_sport;
     if (sport != null && sport !== undefined && String(sport).trim() !== '') {
-      activityData.sport_type = String(sport);
+      const sportKey = String(sport).toLowerCase();
+      activityData.sport_type = SPORT_LABELS[sportKey] ?? sportKey;
     }
     if (subSport != null && subSport !== undefined && String(subSport).trim() !== '') {
-      activityData.sub_sport_type = String(subSport);
+      const subKey = String(subSport).toLowerCase();
+      activityData.sub_sport_type = SUB_SPORT_LABELS[subKey] ?? subKey;
     }
 
     // Calculate pace and speed (fit-file-parser with lengthUnit 'km' gives distance in km)
@@ -133,11 +188,46 @@ class GarminFITParser {
     activityData.total_ascent = this._safeGetFloat(session, 'total_ascent');
     activityData.total_descent = this._safeGetFloat(session, 'total_descent');
 
+    // 坡度（%）
+    activityData.avg_grade = this._safeGetFloat(session, 'avg_grade');
+    activityData.avg_pos_grade = this._safeGetFloat(session, 'avg_pos_grade');
+    activityData.avg_neg_grade = this._safeGetFloat(session, 'avg_neg_grade');
+    activityData.max_pos_grade = this._safeGetFloat(session, 'max_pos_grade');
+    activityData.max_neg_grade = this._safeGetFloat(session, 'max_neg_grade');
+
+    // 训练效果与负荷
+    activityData.total_training_effect = this._safeGetFloat(session, 'total_training_effect');
+    activityData.total_anaerobic_training_effect = this._safeGetFloat(session, 'total_anaerobic_training_effect');
+    activityData.normalized_power = this._safeGetInt(session, 'normalized_power');
+    activityData.training_stress_score = this._safeGetInt(session, 'training_stress_score');
+    activityData.intensity_factor = this._safeGetFloat(session, 'intensity_factor');
+
+    // 海拔（米）
+    activityData.avg_altitude = this._safeGetFloat(session, 'avg_altitude');
+    activityData.max_altitude = this._safeGetFloat(session, 'max_altitude');
+    activityData.min_altitude = this._safeGetFloat(session, 'min_altitude');
+
+    // 区间时间（秒），存为 JSON 字符串
+    activityData.time_in_hr_zone = this._safeGetZoneJson(session, 'time_in_hr_zone');
+    activityData.time_in_speed_zone = this._safeGetZoneJson(session, 'time_in_speed_zone');
+    activityData.time_in_cadence_zone = this._safeGetZoneJson(session, 'time_in_cadence_zone');
+    activityData.time_in_power_zone = this._safeGetZoneJson(session, 'time_in_power_zone');
+
     // Other
     activityData.calories = this._safeGetInt(session, 'total_calories');
     activityData.average_temperature = this._safeGetFloat(session, 'avg_temperature');
 
     return activityData;
+  }
+
+  _safeGetZoneJson(data, key) {
+    const value = data[key];
+    if (value == null || !Array.isArray(value)) return null;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return null;
+    }
   }
 
   _extractLapsData(fitData) {
@@ -227,6 +317,26 @@ class GarminFITParser {
       lapData.average_vertical_ratio = this._safeGetFloat(lap, 'avg_vertical_ratio');
       lapData.average_step_rate_loss = this._safeGetFloat(lap, 'avg_step_rate_loss');
       lapData.average_step_rate_loss_percent = this._safeGetFloat(lap, 'avg_step_rate_loss_percent');
+
+      // 坡度（%）
+      lapData.avg_grade = this._safeGetFloat(lap, 'avg_grade');
+      lapData.avg_pos_grade = this._safeGetFloat(lap, 'avg_pos_grade');
+      lapData.avg_neg_grade = this._safeGetFloat(lap, 'avg_neg_grade');
+      lapData.max_pos_grade = this._safeGetFloat(lap, 'max_pos_grade');
+      lapData.max_neg_grade = this._safeGetFloat(lap, 'max_neg_grade');
+
+      // 区间时间（秒），存为 JSON 字符串
+      lapData.time_in_hr_zone = this._safeGetZoneJson(lap, 'time_in_hr_zone');
+      lapData.time_in_speed_zone = this._safeGetZoneJson(lap, 'time_in_speed_zone');
+      lapData.time_in_cadence_zone = this._safeGetZoneJson(lap, 'time_in_cadence_zone');
+      lapData.time_in_power_zone = this._safeGetZoneJson(lap, 'time_in_power_zone');
+
+      // 触发方式与时间戳
+      const trigger = lap.lap_trigger;
+      if (trigger != null && trigger !== undefined && String(trigger).trim() !== '') {
+        lapData.lap_trigger = String(trigger);
+      }
+      lapData.start_time = this._convertTimestamp(lap.start_time);
 
       // Other
       lapData.calories = this._safeGetInt(lap, 'total_calories');

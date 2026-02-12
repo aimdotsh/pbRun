@@ -135,6 +135,8 @@ class GarminSync {
               successCount++;
               const source = result.fromCache ? '缓存' : '远程';
               log(`${progress} ✓ ${activity.activityName} (${source})`, 'green');
+            } else if (result.skipped && result.reason === 'no_heart_rate') {
+              log(`${progress} ○ ${activity.activityName} - 跳过（无心率）`, 'yellow');
             } else {
               log(`${progress} ✗ ${activity.activityName} - 失败`, 'red');
             }
@@ -218,7 +220,7 @@ class GarminSync {
     let fitData = rawData;
     if (isZip(fitData)) {
       const extracted = await extractFitFromZip(fitData);
-      if (!extracted) return false;
+      if (!extracted) return { success: false };
       fitData = extracted;
     }
 
@@ -231,6 +233,13 @@ class GarminSync {
 
     if (!activityData) {
       return { success: false };
+    }
+
+    // 过滤没有心率的数据（不同步）
+    const hasHeartRate = activityData.average_heart_rate != null && Number(activityData.average_heart_rate) > 0;
+    if (!hasHeartRate) {
+      await fs.unlink(fitFilePath).catch(() => {});
+      return { success: false, skipped: true, reason: 'no_heart_rate' };
     }
 
     // Add activity metadata

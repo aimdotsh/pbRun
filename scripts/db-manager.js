@@ -69,6 +69,31 @@ class DatabaseManager {
         total_ascent REAL,                            -- 累计爬升（米）
         total_descent REAL,                           -- 累计下降（米）
 
+        -- 坡度（%）
+        avg_grade REAL,                               -- 平均坡度
+        avg_pos_grade REAL,                            -- 平均正坡度（上坡）
+        avg_neg_grade REAL,                            -- 平均负坡度（下坡）
+        max_pos_grade REAL,                            -- 最大正坡度
+        max_neg_grade REAL,                            -- 最大负坡度
+
+        -- 训练效果与负荷
+        total_training_effect REAL,                    -- 有氧训练效果（0–5）
+        total_anaerobic_training_effect REAL,          -- 无氧训练效果（0–5）
+        normalized_power INTEGER,                     -- 标准化功率（瓦）
+        training_stress_score INTEGER,                -- 训练负荷指数 TSS
+        intensity_factor REAL,                        -- 强度因子 IF
+
+        -- 海拔（米）
+        avg_altitude REAL,                             -- 平均海拔
+        max_altitude REAL,                             -- 最大海拔
+        min_altitude REAL,                             -- 最低海拔
+
+        -- 区间时间（秒），JSON 数组，如 [z0,z1,z2,...]
+        time_in_hr_zone TEXT,                          -- 心率区间时间
+        time_in_speed_zone TEXT,                       -- 速度区间时间
+        time_in_cadence_zone TEXT,                     -- 步频区间时间
+        time_in_power_zone TEXT,                       -- 功率区间时间
+
         -- 其他
         calories INTEGER,                             -- 热量消耗（卡路里）
         average_temperature REAL,                     -- 平均温度（摄氏度）
@@ -107,6 +132,19 @@ class DatabaseManager {
       this.db.exec('ALTER TABLE activities ADD COLUMN sub_sport_type TEXT');
     } catch (e) {
       if (!/duplicate column name/i.test(e.message)) throw e;
+    }
+    const newActivityColumns = [
+      ['avg_grade', 'REAL'], ['avg_pos_grade', 'REAL'], ['avg_neg_grade', 'REAL'], ['max_pos_grade', 'REAL'], ['max_neg_grade', 'REAL'],
+      ['total_training_effect', 'REAL'], ['total_anaerobic_training_effect', 'REAL'], ['normalized_power', 'INTEGER'], ['training_stress_score', 'INTEGER'], ['intensity_factor', 'REAL'],
+      ['avg_altitude', 'REAL'], ['max_altitude', 'REAL'], ['min_altitude', 'REAL'],
+      ['time_in_hr_zone', 'TEXT'], ['time_in_speed_zone', 'TEXT'], ['time_in_cadence_zone', 'TEXT'], ['time_in_power_zone', 'TEXT']
+    ];
+    for (const [name, type] of newActivityColumns) {
+      try {
+        this.db.exec(`ALTER TABLE activities ADD COLUMN ${name} ${type}`);
+      } catch (e) {
+        if (!/duplicate column name/i.test(e.message)) throw e;
+      }
     }
 
     // Create activity_laps table
@@ -154,6 +192,23 @@ class DatabaseManager {
         average_step_rate_loss REAL,                  -- 平均步速损失（厘米/秒）
         average_step_rate_loss_percent REAL,          -- 平均步速损失百分比（%）
 
+        -- 坡度（%）
+        avg_grade REAL,                               -- 平均坡度
+        avg_pos_grade REAL,                           -- 平均正坡度（上坡）
+        avg_neg_grade REAL,                           -- 平均负坡度（下坡）
+        max_pos_grade REAL,                           -- 最大正坡度
+        max_neg_grade REAL,                            -- 最大负坡度
+
+        -- 区间时间（秒），JSON 数组
+        time_in_hr_zone TEXT,                         -- 心率区间时间
+        time_in_speed_zone TEXT,                       -- 速度区间时间
+        time_in_cadence_zone TEXT,                     -- 步频区间时间
+        time_in_power_zone TEXT,                       -- 功率区间时间
+
+        -- 触发方式与时间戳
+        lap_trigger TEXT,                              -- 分段触发方式（如 manual、distance、time）
+        start_time DATETIME,                           -- 分段开始时间（UTC）
+
         -- 其他
         calories INTEGER,                             -- 热量消耗（卡路里）
         average_temperature REAL,                     -- 平均温度（摄氏度）
@@ -161,6 +216,20 @@ class DatabaseManager {
         FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE
       )
     `);
+
+    // 为已存在的 activity_laps 表添加新列（兼容旧库）
+    const newLapColumns = [
+      ['avg_grade', 'REAL'], ['avg_pos_grade', 'REAL'], ['avg_neg_grade', 'REAL'], ['max_pos_grade', 'REAL'], ['max_neg_grade', 'REAL'],
+      ['time_in_hr_zone', 'TEXT'], ['time_in_speed_zone', 'TEXT'], ['time_in_cadence_zone', 'TEXT'], ['time_in_power_zone', 'TEXT'],
+      ['lap_trigger', 'TEXT'], ['start_time', 'DATETIME']
+    ];
+    for (const [name, type] of newLapColumns) {
+      try {
+        this.db.exec(`ALTER TABLE activity_laps ADD COLUMN ${name} ${type}`);
+      } catch (e) {
+        if (!/duplicate column name/i.test(e.message)) throw e;
+      }
+    }
 
     // Create indexes for laps
     this.db.exec(`
