@@ -46,7 +46,17 @@ export async function GET(request: NextRequest) {
     // Get HR zone statistics
     const data = getHrZoneStats(params);
 
-    // Calculate summary
+    // 心率区间 BPM 范围：与 lib/db getHrZone 一致，使用 .env MAX_HR
+    const maxHr = process.env.MAX_HR ? parseInt(process.env.MAX_HR, 10) : 190;
+    const p = (x: number) => Math.round((x / 100) * maxHr);
+    const zoneRanges: Record<number, { min: number; max: number }> = {
+      1: { min: 1, max: p(70) - 1 },
+      2: { min: p(70), max: p(80) - 1 },
+      3: { min: p(80), max: p(87) - 1 },
+      4: { min: p(87), max: p(93) - 1 },
+      5: { min: p(93), max: maxHr },
+    };
+
     const summary = {
       total_activities: data.reduce((sum, item) => sum + item.activity_count, 0),
       total_periods: new Set(data.map(item => item.period)).size,
@@ -58,6 +68,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       data,
+      zoneRanges,
       summary,
       groupBy,
     });

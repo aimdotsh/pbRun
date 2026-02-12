@@ -1,18 +1,42 @@
 'use client';
 
 import type { HrZoneStat } from '@/lib/types';
-import { formatPace, formatDuration } from '@/lib/format';
+import { formatPace } from '@/lib/format';
 
 interface HrZoneMetricsTableProps {
   data: HrZoneStat[];
+  /** 由服务端根据 .env MAX_HR 计算的区间 BPM 范围，未传时用默认 190 */
+  zoneRanges?: Record<number, { min: number; max: number }> | null;
+  /** 用于新开页面展示区间趋势，传则行点击在新标签页打开 */
+  trendLinkParams?: { startDate: string; endDate: string; groupBy: string };
+}
+
+const DEFAULT_MAX_HR = 190;
+
+/** 仅在后端未返回 zoneRanges 时使用 */
+function getHrZoneRangeBpmFallback(zone: number, maxHr: number = DEFAULT_MAX_HR): string {
+  const p = (x: number) => Math.round((x / 100) * maxHr);
+  switch (zone) {
+    case 1: return `1-${p(70) - 1}`;
+    case 2: return `${p(70)}-${p(80) - 1}`;
+    case 3: return `${p(80)}-${p(87) - 1}`;
+    case 4: return `${p(87)}-${p(93) - 1}`;
+    case 5: return `${p(93)}-${maxHr}`;
+    default: return '';
+  }
+}
+
+function getRangeBpm(zone: number, zoneRanges: HrZoneMetricsTableProps['zoneRanges']): string {
+  if (zoneRanges && zoneRanges[zone]) return `${zoneRanges[zone].min}-${zoneRanges[zone].max}`;
+  return getHrZoneRangeBpmFallback(zone);
 }
 
 const HR_ZONE_NAMES: Record<number, string> = {
-  1: 'Zone 1 (轻松)',
-  2: 'Zone 2 (有氧)',
-  3: 'Zone 3 (节奏)',
-  4: 'Zone 4 (乳酸阈)',
-  5: 'Zone 5 (最大摄氧)',
+  1: 'Z1(轻松)',
+  2: 'Z2(有氧)',
+  3: 'Z3(节奏)',
+  4: 'Z4(乳酸阈)',
+  5: 'Z5(VoMax)',
 };
 
 const HR_ZONE_COLORS: Record<number, string> = {
@@ -23,7 +47,7 @@ const HR_ZONE_COLORS: Record<number, string> = {
   5: 'bg-red-100 dark:bg-red-900',
 };
 
-export default function HrZoneMetricsTable({ data }: HrZoneMetricsTableProps) {
+export default function HrZoneMetricsTable({ data, zoneRanges, trendLinkParams }: HrZoneMetricsTableProps) {
   // Aggregate by HR zone
   const zoneStats: Record<number, {
     activity_count: number;
@@ -66,9 +90,11 @@ export default function HrZoneMetricsTable({ data }: HrZoneMetricsTableProps) {
       ? stats.avg_stride.reduce((a, b) => a + b, 0) / stats.avg_stride.length
       : null;
 
+    const zoneNum = parseInt(zone);
     return {
-      zone: parseInt(zone),
-      name: HR_ZONE_NAMES[parseInt(zone)],
+      zone: zoneNum,
+      name: HR_ZONE_NAMES[zoneNum],
+      rangeBpm: getRangeBpm(zoneNum, zoneRanges),
       activity_count: stats.activity_count,
       total_duration: stats.total_duration,
       total_distance: stats.total_distance,
@@ -77,6 +103,16 @@ export default function HrZoneMetricsTable({ data }: HrZoneMetricsTableProps) {
       avg_stride: avgStride,
     };
   }).sort((a, b) => a.zone - b.zone);
+
+  const getZoneTrendHref = (zoneNum: number) => {
+    if (!trendLinkParams) return null;
+    const q = new URLSearchParams({
+      startDate: trendLinkParams.startDate,
+      endDate: trendLinkParams.endDate,
+      groupBy: trendLinkParams.groupBy,
+    }).toString();
+    return `/pages/analysis/zone/${zoneNum}?${q}`;
+  };
 
   if (rows.length === 0) {
     return (
@@ -88,37 +124,41 @@ export default function HrZoneMetricsTable({ data }: HrZoneMetricsTableProps) {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-[360px] text-left text-sm">
         <thead>
           <tr className="border-b border-zinc-200 dark:border-zinc-800">
             <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">心率区间</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">活动次数</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">总时长</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">总距离</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">平均配速</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">平均步频</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">平均步幅</th>
+            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">配速</th>
+            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">步频</th>
+            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">步幅</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.zone}
-              className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
-            >
-              <td className="px-4 py-3">
-                <span className={`inline-block px-2 py-1 rounded ${HR_ZONE_COLORS[row.zone]}`}>
-                  {row.name}
-                </span>
-              </td>
-              <td className="px-4 py-3">{row.activity_count}</td>
-              <td className="px-4 py-3">{formatDuration(row.total_duration)}</td>
-              <td className="px-4 py-3">{(row.total_distance / 1000).toFixed(1)} km</td>
-              <td className="px-4 py-3">{row.avg_pace !== null ? formatPace(row.avg_pace) : '--'}</td>
-              <td className="px-4 py-3">{row.avg_cadence !== null ? row.avg_cadence.toFixed(0) : '--'}</td>
-              <td className="px-4 py-3">{row.avg_stride !== null ? row.avg_stride.toFixed(2) + ' m' : '--'}</td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const href = getZoneTrendHref(row.zone);
+            return (
+              <tr
+                key={row.zone}
+                role={href ? 'button' : undefined}
+                tabIndex={href ? 0 : undefined}
+                className={`border-b border-zinc-100 last:border-0 transition-colors dark:border-zinc-800 ${
+                  href ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''
+                }`}
+                onClick={href ? () => window.open(href, '_blank', 'noopener,noreferrer') : undefined}
+                onKeyDown={href ? (e) => e.key === 'Enter' && window.open(href, '_blank', 'noopener,noreferrer') : undefined}
+              >
+                <td className="px-4 py-3">
+                  <span className={`inline-block px-2 py-1 rounded ${HR_ZONE_COLORS[row.zone]}`}>
+                    <span className="block">{row.name}</span>
+                    <span className="block text-xs opacity-90">{row.rangeBpm}</span>
+                  </span>
+                </td>
+                <td className="px-4 py-3">{row.avg_pace !== null ? formatPace(row.avg_pace) : '--'}</td>
+                <td className="px-4 py-3">{row.avg_cadence !== null ? row.avg_cadence.toFixed(0) : '--'}</td>
+                <td className="px-4 py-3">{row.avg_stride !== null ? row.avg_stride.toFixed(2) + ' m' : '--'}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

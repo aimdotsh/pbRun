@@ -240,6 +240,24 @@ class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_laps_lap_index
       ON activity_laps(activity_id, lap_index)
     `);
+
+    // activity_records: 单条活动内逐条记录（心率/步频/步幅趋势）
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS activity_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        activity_id INTEGER NOT NULL,
+        record_index INTEGER NOT NULL,
+        elapsed_sec REAL NOT NULL,
+        heart_rate INTEGER,
+        cadence INTEGER,
+        step_length REAL,
+        FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE
+      )
+    `);
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_records_activity_id
+      ON activity_records(activity_id)
+    `);
   }
 
   upsertActivity(activityData) {
@@ -288,6 +306,37 @@ class DatabaseManager {
     });
 
     insertMany(lapsData);
+  }
+
+  insertActivityRecords(activityId, recordsData) {
+    const deleteStmt = this.db.prepare('DELETE FROM activity_records WHERE activity_id = ?');
+    deleteStmt.run(activityId);
+
+    if (!recordsData || recordsData.length === 0) {
+      return;
+    }
+
+    const columns = ['activity_id', 'record_index', 'elapsed_sec', 'heart_rate', 'cadence', 'step_length'];
+    const placeholders = columns.map(() => '?').join(', ');
+    const insertStmt = this.db.prepare(`
+      INSERT INTO activity_records (${columns.join(', ')})
+      VALUES (${placeholders})
+    `);
+
+    const insertMany = this.db.transaction((rows) => {
+      for (const row of rows) {
+        insertStmt.run(
+          row.activity_id,
+          row.record_index,
+          row.elapsed_sec,
+          row.heart_rate ?? null,
+          row.cadence ?? null,
+          row.step_length ?? null
+        );
+      }
+    });
+
+    insertMany(recordsData);
   }
 
   getActivity(activityId) {

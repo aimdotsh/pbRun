@@ -13,14 +13,15 @@ import {
   formatInt,
   formatTemp,
 } from '@/lib/format';
-import type { Activity } from '@/lib/types';
-import type { ActivityLap } from '@/lib/types';
+import type { Activity, ActivityLap, ActivityRecord } from '@/lib/types';
+import ActivityTrendCharts from '@/lib/components/charts/ActivityTrendCharts';
 
 export default function ActivityDetailPage() {
   const params = useParams();
   const id = typeof params.id === 'string' ? params.id : null;
   const [activity, setActivity] = useState<Activity | null>(null);
   const [laps, setLaps] = useState<ActivityLap[]>([]);
+  const [records, setRecords] = useState<ActivityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,11 +39,16 @@ export default function ActivityDetailPage() {
         if (!r.ok) return { laps: [] };
         return r.json();
       }),
+      fetch(`/api/activities/${id}/records`).then((r) => {
+        if (!r.ok) return { records: [] };
+        return r.json();
+      }),
     ])
-      .then(([act, lapsRes]) => {
+      .then(([act, lapsRes, recordsRes]) => {
         if (!cancelled) {
           setActivity(act);
           setLaps(lapsRes.laps ?? []);
+          setRecords(recordsRes.records ?? []);
         }
       })
       .catch((e) => {
@@ -92,13 +98,11 @@ export default function ActivityDetailPage() {
     { label: '时长', value: formatDuration(activity.moving_time ?? activity.duration) },
     { label: '平均配速', value: formatPace(activity.average_pace) },
     { label: '平均心率', value: formatInt(activity.average_heart_rate, 'bpm') },
-    { label: '最大心率', value: formatInt(activity.max_heart_rate, 'bpm') },
     { label: '平均步频', value: formatCadence(activity.average_cadence) },
-    { label: '最大步频', value: formatCadence(activity.max_cadence) },
     { label: '平均步幅', value: activity.average_stride_length != null ? `${(activity.average_stride_length * 100).toFixed(0)} cm` : '--' },
-    { label: '累计爬升', value: activity.total_ascent != null ? `${activity.total_ascent} m` : '--' },
-    { label: '累计下降', value: activity.total_descent != null ? `${activity.total_descent} m` : '--' },
-    { label: '热量', value: activity.calories != null ? `${activity.calories} kcal` : '--' },
+    { label: '垂直步幅比', value: activity.average_vertical_ratio != null ? `${activity.average_vertical_ratio.toFixed(1)} %` : '--' },
+    { label: '平均触地时间', value: activity.average_ground_contact_time != null ? `${activity.average_ground_contact_time} ms` : '--' },
+    { label: '垂直摆动', value: activity.average_vertical_oscillation != null ? `${activity.average_vertical_oscillation.toFixed(1)} cm` : '--' },
     { label: '平均温度', value: formatTemp(activity.average_temperature) },
     { label: 'VDOT', value: activity.vdot_value != null ? activity.vdot_value.toFixed(1) : '--' },
   ];
@@ -137,36 +141,20 @@ export default function ActivityDetailPage() {
         </div>
       </section>
 
-      {activity.average_ground_contact_time != null || activity.average_vertical_oscillation != null ? (
+      {records.length > 0 ? (
+        <ActivityTrendCharts records={records} />
+      ) : null}
+
+      {activity.average_gct_balance != null ? (
         <section>
           <h2 className="mb-3 text-lg font-medium text-zinc-800 dark:text-zinc-200">
             跑步动态
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {activity.average_ground_contact_time != null && (
-              <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">平均触地时间</div>
-                <div className="mt-0.5 font-medium">{activity.average_ground_contact_time} ms</div>
-              </div>
-            )}
-            {activity.average_vertical_oscillation != null && (
-              <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">垂直摆动</div>
-                <div className="mt-0.5 font-medium">{activity.average_vertical_oscillation.toFixed(1)} cm</div>
-              </div>
-            )}
-            {activity.average_vertical_ratio != null && (
-              <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">垂直步幅比</div>
-                <div className="mt-0.5 font-medium">{activity.average_vertical_ratio.toFixed(1)} %</div>
-              </div>
-            )}
-            {activity.average_gct_balance != null && (
-              <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">触地平衡</div>
-                <div className="mt-0.5 font-medium">{activity.average_gct_balance.toFixed(1)} %</div>
-              </div>
-            )}
+            <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">触地平衡</div>
+              <div className="mt-0.5 font-medium">{activity.average_gct_balance.toFixed(1)} %</div>
+            </div>
           </div>
         </section>
       ) : null}

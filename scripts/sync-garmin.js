@@ -228,8 +228,8 @@ class GarminSync {
     const fitFilePath = path.join(tempDir, `${activityId}.fit`);
     await fs.writeFile(fitFilePath, Buffer.isBuffer(fitData) ? fitData : Buffer.from(fitData));
 
-    // Parse FIT file
-    const { activity: activityData, laps: lapsData } = await this.fitParser.parseFitFile(fitFilePath);
+    // Parse FIT file (activity, laps, records for trend charts)
+    const { activity: activityData, laps: lapsData, records: recordsData } = await this.fitParser.parseFitFile(fitFilePath);
 
     if (!activityData) {
       return { success: false };
@@ -275,6 +275,15 @@ class GarminSync {
       }));
 
       this.db.insertLaps(activityId, lapsWithId);
+    }
+
+    // Save record-level data (heart rate / cadence / stride trend)
+    if (recordsData && recordsData.length > 0) {
+      const recordsWithId = recordsData.map(rec => ({
+        ...rec,
+        activity_id: activityId
+      }));
+      this.db.insertActivityRecords(activityId, recordsWithId);
     }
 
     // Cleanup temp file

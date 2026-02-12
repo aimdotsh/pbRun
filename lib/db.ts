@@ -7,6 +7,7 @@ import path from 'path';
 import {
   Activity,
   ActivityLap,
+  ActivityRecord,
   ActivityQueryParams,
   PaginatedResponse,
   StatsResponse,
@@ -97,6 +98,17 @@ export function getActivityLaps(activityId: number): ActivityLap[] {
     'SELECT * FROM activity_laps WHERE activity_id = ? ORDER BY lap_index'
   );
   return stmt.all(activityId) as ActivityLap[];
+}
+
+/**
+ * Get record-level data for an activity (heart rate / cadence / stride trend).
+ */
+export function getActivityRecords(activityId: number): ActivityRecord[] {
+  const db = getDatabase();
+  const stmt = db.prepare(
+    'SELECT * FROM activity_records WHERE activity_id = ? ORDER BY record_index'
+  );
+  return stmt.all(activityId) as ActivityRecord[];
 }
 
 /**

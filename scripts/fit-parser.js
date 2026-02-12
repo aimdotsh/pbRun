@@ -92,7 +92,10 @@ class GarminFITParser {
       // Extract lap data
       const lapsData = this._extractLapsData(fitData);
 
-      return { activity: activityData, laps: lapsData };
+      // Extract record-level data (for trend charts: heart rate, cadence, stride over time)
+      const recordsData = this._extractRecordsData(fitData);
+
+      return { activity: activityData, laps: lapsData, records: recordsData };
     } catch (error) {
       const msg = error && typeof error === 'object' && error.message != null ? error.message : String(error);
       console.error(`Error parsing FIT file ${fitFilePath}:`, msg);
@@ -346,6 +349,53 @@ class GarminFITParser {
     }
 
     return lapsData;
+  }
+
+  /**
+   * Extract record-level data (each sample in time) for trend charts.
+   * FIT record: heart_rate (bpm), cadence (rpm, ×2 for steps/min), step_length (mm → m).
+   */
+  _extractRecordsData(fitData) {
+    const rawRecords = fitData.records || [];
+    if (rawRecords.length === 0) return [];
+
+    let firstTimestampMs = null;
+    const records = [];
+
+    for (let i = 0; i < rawRecords.length; i++) {
+      const r = rawRecords[i];
+      const ts = r.timestamp;
+      const elapsedSec = r.elapsed_time != null
+        ? Number(r.elapsed_time)
+        : (firstTimestampMs != null && ts
+            ? (new Date(ts).getTime() - firstTimestampMs) / 1000
+            : 0);
+      if (firstTimestampMs == null && ts) {
+        firstTimestampMs = new Date(ts).getTime();
+      }
+
+      const heartRate = this._safeGetInt(r, 'heart_rate');
+      let cadence = this._safeGetInt(r, 'cadence');
+      if (cadence != null && cadence > 0 && cadence < 200) {
+        cadence = cadence * 2;
+      }
+      let stepLength = this._safeGetFloat(r, 'step_length');
+      if (stepLength != null && stepLength > 0) {
+        stepLength = stepLength > 10 ? stepLength / 1000 : stepLength;
+      }
+
+      if (heartRate != null || cadence != null || stepLength != null) {
+        records.push({
+          record_index: i,
+          elapsed_sec: Math.round(elapsedSec * 10) / 10,
+          heart_rate: heartRate ?? null,
+          cadence: cadence ?? null,
+          step_length: stepLength ?? null,
+        });
+      }
+    }
+
+    return records;
   }
 
   _convertTimestamp(timestamp) {

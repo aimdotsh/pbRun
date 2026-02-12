@@ -3,22 +3,21 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import VDOTTrendChart from '@/lib/components/charts/VDOTTrendChart';
-import HrZonePieChart from '@/lib/components/charts/HrZonePieChart';
-import HrZoneBarChart from '@/lib/components/charts/HrZoneBarChart';
 import HrZoneMetricsTable from '@/lib/components/charts/HrZoneMetricsTable';
 import type { HrZoneStat, VDOTTrendPoint } from '@/lib/types';
 
 type TimeRange = '3months' | '6months' | '1year' | 'all';
 type GroupBy = 'week' | 'month';
-type Metric = 'pace' | 'cadence' | 'stride';
+
+const GROUP_BY: GroupBy = 'week';
 
 export default function AnalysisPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('6months');
-  const [groupBy, setGroupBy] = useState<GroupBy>('month');
-  const [selectedMetric, setSelectedMetric] = useState<Metric>('pace');
 
   const [hrZoneData, setHrZoneData] = useState<HrZoneStat[]>([]);
+  const [zoneRanges, setZoneRanges] = useState<Record<number, { min: number; max: number }> | null>(null);
   const [vdotData, setVdotData] = useState<VDOTTrendPoint[]>([]);
+  const [weekStats, setWeekStats] = useState<{ averageVDOT?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,21 +60,25 @@ export default function AnalysisPage() {
     const { startDate, endDate } = getDateRange(timeRange);
 
     Promise.all([
-      fetch(`/api/analysis/hr-zones?startDate=${startDate}&endDate=${endDate}&groupBy=${groupBy}`)
+      fetch(`/api/analysis/hr-zones?startDate=${startDate}&endDate=${endDate}&groupBy=${GROUP_BY}`)
         .then(res => {
           if (!res.ok) throw new Error(res.statusText);
           return res.json();
         }),
-      fetch(`/api/analysis/vdot-trend?startDate=${startDate}&endDate=${endDate}&groupBy=${groupBy}`)
+      fetch(`/api/analysis/vdot-trend?startDate=${startDate}&endDate=${endDate}&groupBy=${GROUP_BY}`)
         .then(res => {
           if (!res.ok) throw new Error(res.statusText);
           return res.json();
         }),
+      fetch('/api/stats?period=week')
+        .then(res => (res.ok ? res.json() : { averageVDOT: undefined })),
     ])
-      .then(([hrZoneRes, vdotRes]) => {
+      .then(([hrZoneRes, vdotRes, stats]) => {
         if (!cancelled) {
           setHrZoneData(hrZoneRes.data || []);
+          setZoneRanges(hrZoneRes.zoneRanges || null);
           setVdotData(vdotRes.data || []);
+          setWeekStats(stats || null);
         }
       })
       .catch(err => {
@@ -92,7 +95,7 @@ export default function AnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [timeRange, groupBy]);
+  }, [timeRange]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -124,30 +127,6 @@ export default function AnalysisPage() {
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">聚合方式:</label>
-          <select
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-          >
-            <option value="week">按周</option>
-            <option value="month">按月</option>
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">对比指标:</label>
-          <select
-            value={selectedMetric}
-            onChange={(e) => setSelectedMetric(e.target.value as Metric)}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-          >
-            <option value="pace">配速</option>
-            <option value="cadence">步频</option>
-            <option value="stride">步幅</option>
-          </select>
-        </div>
       </div>
 
       {/* Error State */}
@@ -164,44 +143,51 @@ export default function AnalysisPage() {
         </div>
       ) : (
         <>
-          {/* VDOT Trend Section */}
-          <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          {/* 概览 */}
+          <section>
+            <h2 className="mb-4 text-lg font-medium text-zinc-800 dark:text-zinc-200">
+              概览
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="text-sm text-zinc-500 dark:text-zinc-400">近一周 VDOT 平均值</div>
+                <div className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+                  {weekStats?.averageVDOT != null ? weekStats.averageVDOT.toFixed(1) : '--'}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* VDOT 趋势 */}
+          <section>
+            <h2 className="mb-4 text-lg font-medium text-zinc-800 dark:text-zinc-200">
+              VDOT 趋势
+            </h2>
             {vdotData.length > 0 ? (
-              <VDOTTrendChart data={vdotData} groupBy={groupBy} />
+              <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                <VDOTTrendChart data={vdotData} groupBy={GROUP_BY} />
+              </div>
             ) : (
-              <div className="py-8 text-center text-zinc-500">暂无VDOT数据</div>
+              <div className="rounded-xl border border-zinc-200 bg-white py-8 text-center text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+                暂无 VDOT 数据
+              </div>
             )}
           </section>
 
-          {/* HR Zone Analysis Section */}
+          {/* 详细指标 */}
           <section>
             <h2 className="mb-4 text-lg font-medium text-zinc-800 dark:text-zinc-200">
-              心率区间分析
+              详细指标
             </h2>
-
             {hrZoneData.length > 0 ? (
-              <div className="flex flex-col gap-6">
-                {/* Pie Chart and Bar Chart */}
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-                    <HrZonePieChart data={hrZoneData} />
-                  </div>
-                  <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-                    <HrZoneBarChart data={hrZoneData} metric={selectedMetric} groupBy={groupBy} />
-                  </div>
-                </div>
-
-                {/* Metrics Table */}
-                <div>
-                  <h3 className="mb-3 text-base font-medium text-zinc-800 dark:text-zinc-200">
-                    详细指标
-                  </h3>
-                  <HrZoneMetricsTable data={hrZoneData} />
-                </div>
-              </div>
+              <HrZoneMetricsTable
+                data={hrZoneData}
+                zoneRanges={zoneRanges}
+                trendLinkParams={{ ...getDateRange(timeRange), groupBy: GROUP_BY }}
+              />
             ) : (
               <div className="rounded-xl border border-zinc-200 bg-white py-12 text-center text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-                暂无心率区间数据
+                暂无数据
               </div>
             )}
           </section>
