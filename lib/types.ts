@@ -185,3 +185,43 @@ export interface VDOTDataPoint {
   distance: number;                              // 距离（米）
   duration: number;                              // 时长（秒）
 }
+
+// 心率区间统计数据（按周或月聚合）
+export interface HrZoneStat {
+  period: string;                                // 时间周期 (YYYY-MM 或 YYYY-Www)
+  period_type: 'week' | 'month';                 // 周期类型
+  hr_zone: number;                               // 心率区间 (1-5)
+  activity_count: number;                        // 活动次数
+  total_duration: number;                        // 总时长（秒）
+  total_distance: number;                        // 总距离（米）
+  avg_pace: number | null;                       // 平均配速（秒/公里）
+  avg_cadence: number | null;                    // 平均步频（步/分钟）
+  avg_stride_length: number | null;              // 平均步幅（米）
+  avg_heart_rate: number | null;                 // 平均心率（bpm）
+}
+
+// VDOT趋势数据点（按周或月聚合）
+export interface VDOTTrendPoint {
+  period: string;                                // 时间周期
+  period_type: 'week' | 'month';                 // 周期类型
+  avg_vdot: number;                              // 平均VDOT
+  max_vdot: number | null;                       // 最大VDOT
+  min_vdot: number | null;                       // 最小VDOT
+  activity_count: number;                        // 活动次数
+  total_distance: number;                        // 总距离（米）
+  total_duration: number;                        // 总时长（秒）
+}
+
+// 心率区间分析API请求参数
+export interface HrZoneAnalysisParams {
+  startDate?: string;                            // 开始日期 (YYYY-MM-DD)
+  endDate?: string;                              // 结束日期 (YYYY-MM-DD)
+  groupBy: 'week' | 'month';                     // 聚合维度
+}
+
+// VDOT趋势API请求参数
+export interface VDOTTrendParams {
+  startDate?: string;                            // 开始日期
+  endDate?: string;                              // 结束日期
+  groupBy: 'week' | 'month';                     // 聚合维度
+}
