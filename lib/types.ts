@@ -18,7 +18,7 @@ export interface Activity {
 
   // 配速和速度
   average_pace?: number;                         // 平均配速（秒/公里）
-  average_speed?: number;                        // 平均速度（米/秒）
+  average_speed?: number;                        // 平均速度（公里/小时）
   max_speed?: number;                            // 最大速度（米/秒）
 
   // 心率数据
@@ -70,7 +70,7 @@ export interface ActivityLap {
   moving_time?: number;                          // 移动时间（秒）
 
   // 距离和配速
-  distance: number;                              // 分段距离（公里）
+  distance: number;                              // 分段距离（米）
   average_pace?: number;                         // 平均配速（秒/公里）
   average_pace_gap?: number;                     // 平均坡度调整配速（秒/公里）
   best_pace?: number;                            // 最佳配速（秒/公里）

@@ -130,10 +130,11 @@ class GarminSync {
           const progress = `[${i + 1}/${total}]`;
 
           try {
-            const success = await this._syncActivity(activity, tempDir);
-            if (success) {
+            const result = await this._syncActivity(activity, tempDir);
+            if (result.success) {
               successCount++;
-              log(`${progress} ✓ ${activity.activityName}`, 'green');
+              const source = result.fromCache ? '缓存' : '远程';
+              log(`${progress} ✓ ${activity.activityName} (${source})`, 'green');
             } else {
               log(`${progress} ✗ ${activity.activityName} - 失败`, 'red');
             }
@@ -198,8 +199,10 @@ class GarminSync {
     // 优先从 .cache/fit 读取，避免重复拉取
     const cachePath = path.join(FIT_CACHE_DIR, String(activityId));
     let rawData = null;
+    let fromCache = false;
     try {
       rawData = await fs.readFile(cachePath);
+      fromCache = true;
     } catch {
       // 缓存未命中，从 Garmin 下载
       rawData = await this.client.downloadFitFile(activityId);
@@ -208,7 +211,7 @@ class GarminSync {
       }
     }
     if (!rawData) {
-      return false;
+      return { success: false };
     }
 
     // Garmin 可能返回 ZIP 或裸 FIT，统一处理
@@ -227,7 +230,7 @@ class GarminSync {
     const { activity: activityData, laps: lapsData } = await this.fitParser.parseFitFile(fitFilePath);
 
     if (!activityData) {
-      return false;
+      return { success: false };
     }
 
     // Add activity metadata
@@ -268,7 +271,7 @@ class GarminSync {
     // Cleanup temp file
     await fs.unlink(fitFilePath);
 
-    return true;
+    return { success: true, fromCache };
   }
 
   _sleep(ms) {

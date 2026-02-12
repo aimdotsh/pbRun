@@ -11,6 +11,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const Database = require('better-sqlite3');
 
 // ANSI colors
 const colors = {
@@ -77,6 +78,17 @@ function checkDatabaseExists() {
   return fs.existsSync(dbPath);
 }
 
+/** 清空 activities 与 activity_laps 两个表的数据，保留文件与表结构 */
+function clearDatabaseData(dbPath) {
+  const db = new Database(dbPath);
+  try {
+    db.exec('DELETE FROM activity_laps');
+    db.exec('DELETE FROM activities');
+  } finally {
+    db.close();
+  }
+}
+
 async function askUserConfirmation(question) {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -105,8 +117,8 @@ async function handleExistingDatabase() {
 
     if (shouldClear) {
       const dbPath = path.join(process.cwd(), 'data', 'activities.db');
-      fs.unlinkSync(dbPath);
-      log('\n✓ 数据库已清空', 'green');
+      clearDatabaseData(dbPath);
+      log('\n✓ 数据库内容已清空（保留 data/activities.db）', 'green');
       return 'full';
     } else {
       log('\n✓ 保留现有数据，将进行增量同步', 'green');

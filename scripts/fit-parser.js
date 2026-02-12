@@ -67,7 +67,7 @@ class GarminFITParser {
     const distance = activityData.distance;
     const duration = activityData.duration;
     if (distance != null && duration && duration > 0 && distance > 0) {
-      activityData.average_speed = (distance * 1000) / duration; // m/s
+      activityData.average_speed = (distance / duration) * 3600; // km/h
       activityData.average_pace = duration / distance; // sec/km
     }
 
@@ -138,10 +138,15 @@ class GarminFITParser {
     for (let lapIndex = 0; lapIndex < laps.length; lapIndex++) {
       const lap = laps[lapIndex];
 
+      // FIT 解析器给出距离为 km，统一：distance 米，average_speed 公里/小时
+      const distanceKm = this._safeGetFloat(lap, 'total_distance');
+      const duration = this._safeGetInt(lap, 'total_elapsed_time');
+      const distanceM = distanceKm != null ? distanceKm * 1000 : null;
+
       const lapData = {
         lap_index: lapIndex,
-        duration: this._safeGetInt(lap, 'total_elapsed_time'),
-        distance: this._safeGetFloat(lap, 'total_distance'),
+        duration,
+        distance: distanceM ?? 0,
       };
 
       // Cumulative time
@@ -151,12 +156,10 @@ class GarminFITParser {
       // Moving time
       lapData.moving_time = this._safeGetInt(lap, 'total_timer_time');
 
-      // Calculate pace and speed (distance in km from fit-file-parser)
-      const distance = lapData.distance;
-      const duration = lapData.duration;
-      if (distance != null && duration && duration > 0 && distance > 0) {
-        lapData.average_speed = (distance / duration) * 3600; // km/h (distance in km, duration in seconds)
-        lapData.average_pace = duration / distance; // sec/km
+      // 配速与速度：average_speed 公里/小时，average_pace 秒/公里
+      if (distanceM != null && distanceM > 0 && duration && duration > 0) {
+        lapData.average_speed = (distanceM / duration) * 3.6; // km/h
+        lapData.average_pace = duration / distanceKm; // sec/km
       }
 
       // Pace variations
@@ -164,8 +167,8 @@ class GarminFITParser {
       lapData.best_pace = this._safeGetFloat(lap, 'best_lap_time');
 
       const movingTime = lapData.moving_time;
-      if (distance != null && movingTime && movingTime > 0 && distance > 0) {
-        lapData.average_moving_pace = movingTime / distance; // sec/km
+      if (distanceKm != null && distanceKm > 0 && movingTime && movingTime > 0) {
+        lapData.average_moving_pace = movingTime / distanceKm; // sec/km
       }
 
       // Heart rate

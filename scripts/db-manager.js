@@ -39,7 +39,7 @@ class DatabaseManager {
 
         -- 配速和速度
         average_pace REAL,                            -- 平均配速（秒/公里）
-        average_speed REAL,                           -- 平均速度（米/秒）
+        average_speed REAL,                           -- 平均速度（公里/小时）
         max_speed REAL,                               -- 最大速度（米/秒）
 
         -- 心率数据
@@ -108,7 +108,7 @@ class DatabaseManager {
         moving_time INTEGER,                          -- 移动时间（秒）
 
         -- 距离和配速
-        distance REAL NOT NULL,                       -- 分段距离（公里）
+        distance REAL NOT NULL,                       -- 分段距离（米）
         average_pace REAL,                            -- 平均配速（秒/公里）
         average_pace_gap REAL,                        -- 平均坡度调整配速（秒/公里）
         best_pace REAL,                               -- 最佳配速（秒/公里）

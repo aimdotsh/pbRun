@@ -86,8 +86,8 @@ class DataValidator {
 
     let distanceUnitIssues = 0;
     activities.forEach(act => {
-      // If distance is in km, average_speed should be (distance * 1000) / duration
-      const expectedSpeed = (act.distance * 1000) / act.duration;
+      // average_speed 为 km/h，distance 为米时 expectedSpeed = (distance/duration)*3.6
+      const expectedSpeed = (act.distance / act.duration) * 3.6;
       const diff = Math.abs(expectedSpeed - act.average_speed);
 
       if (diff > 0.01) {
@@ -96,7 +96,7 @@ class DataValidator {
     });
 
     if (distanceUnitIssues === 0) {
-      log('  ✓ distance 单位: 公里 (验证通过)', 'green');
+      log('  ✓ average_speed 与 distance 一致 (km/h, 验证通过)', 'green');
     } else {
       log(`  ✗ distance 单位问题: ${distanceUnitIssues} 条记录异常`, 'red');
       this.addIssue('单位', `Activities.distance 单位不一致，${distanceUnitIssues} 条记录`);
@@ -138,14 +138,14 @@ class DataValidator {
     let timeErrors = 0;
 
     activities.forEach(act => {
-      // Validate average_speed = (distance * 1000) / duration
-      const expectedSpeed = (act.distance * 1000) / act.duration;
+      // average_speed 公里/小时 = (distance米 / duration秒) * 3.6
+      const expectedSpeed = (act.distance / act.duration) * 3.6;
       if (Math.abs(expectedSpeed - act.average_speed) > 0.01) {
         speedErrors++;
       }
 
-      // Validate average_pace = duration / distance
-      const expectedPace = act.duration / act.distance;
+      // average_pace 秒/公里 = duration / (distance/1000)
+      const expectedPace = (act.duration * 1000) / act.distance;
       if (Math.abs(expectedPace - act.average_pace) > 0.01) {
         paceErrors++;
       }
@@ -193,21 +193,21 @@ class DataValidator {
       return;
     }
 
-    // Check if average_speed is in km/h (expected) or other unit
+    // average_speed 应为公里/小时
     const avgSpeed = laps.reduce((sum, lap) => sum + lap.average_speed, 0) / laps.length;
 
     if (avgSpeed < 1) {
-      log(`  ✗ average_speed 单位异常: 平均值 ${avgSpeed.toFixed(4)} (期望: km/h, 应在 5-15 范围)`, 'red');
+      log(`  ✗ average_speed 单位异常: 平均值 ${avgSpeed.toFixed(4)} (期望: km/h, 典型约 5-15)`, 'red');
       this.addIssue('单位', 'Laps.average_speed 单位错误或计算错误');
-    } else if (avgSpeed > 3 && avgSpeed < 20) {
-      log(`  ✓ average_speed 单位: km/h (平均: ${avgSpeed.toFixed(2)})`, 'green');
+    } else if (avgSpeed >= 5 && avgSpeed <= 20) {
+      log(`  ✓ average_speed 单位: 公里/小时 (平均: ${avgSpeed.toFixed(2)} km/h)`, 'green');
     } else {
-      log(`  ⚠ average_speed 平均值异常: ${avgSpeed.toFixed(2)}`, 'yellow');
+      log(`  ⚠ average_speed 平均值异常: ${avgSpeed.toFixed(2)} km/h`, 'yellow');
     }
 
-    // Verify distance unit (should be km)
+    // distance 应为米（与 Activity 一致）
     const avgDistance = laps.reduce((sum, lap) => sum + lap.distance, 0) / laps.length;
-    log(`  ✓ distance 单位: 公里 (平均: ${avgDistance.toFixed(2)} km)`, 'green');
+    log(`  ✓ distance 单位: 米 (平均: ${avgDistance.toFixed(0)} m)`, 'green');
   }
 
   validateLapCalculations() {
@@ -245,16 +245,16 @@ class DataValidator {
       let expectedCumulativeTime = 0;
 
       laps.forEach(lap => {
-        // Validate average_speed = (distance / duration) * 3.6
+        // average_speed 公里/小时 = (distance米 / duration秒) * 3.6
         if (lap.duration > 0 && lap.distance > 0) {
           const expectedSpeed = (lap.distance / lap.duration) * 3.6;
-          if (Math.abs(expectedSpeed - lap.average_speed) > 0.01) {
+          if (lap.average_speed != null && Math.abs(expectedSpeed - lap.average_speed) > 0.01) {
             speedCalcErrors++;
           }
 
-          // Validate average_pace = duration / distance
-          const expectedPace = lap.duration / lap.distance;
-          if (Math.abs(expectedPace - lap.average_pace) > 0.01) {
+          // average_pace 秒/公里 = duration / (distance/1000)
+          const expectedPace = (lap.duration * 1000) / lap.distance;
+          if (lap.average_pace != null && Math.abs(expectedPace - lap.average_pace) > 0.01) {
             paceCalcErrors++;
           }
         }
@@ -266,9 +266,9 @@ class DataValidator {
         }
       });
 
-      // Validate total distance
+      // Validate total distance（均为米）
       const lapDistanceSum = laps.reduce((sum, lap) => sum + lap.distance, 0);
-      if (activity && Math.abs(lapDistanceSum - activity.total_distance) > 0.1) {
+      if (activity && Math.abs(lapDistanceSum - activity.total_distance) > 1) {
         distanceSumErrors++;
       }
     });
