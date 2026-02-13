@@ -245,6 +245,9 @@ export default function AnalysisPage() {
           <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               跑力与详细指标
+              <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                {startDate} – {endDate}
+              </span>
               {currentVdot != null && currentVdot > 0 && (
                 <span className="ml-2 font-semibold text-emerald-600 dark:text-emerald-400">{currentVdot.toFixed(1)}</span>
               )}
@@ -260,7 +263,12 @@ export default function AnalysisPage() {
 
           {/* 心率区间与详细指标（受上方时间范围控制） */}
           <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">心率区间与详细指标</h2>
+            <h2 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              心率区间与详细指标
+              <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                {startDate} – {endDate}
+              </span>
+            </h2>
             {hrZoneData.length > 0 ? (
               <HrZoneMetricsTable
                 data={hrZoneData}

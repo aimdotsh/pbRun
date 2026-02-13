@@ -212,8 +212,7 @@ export function getStats(period?: 'week' | 'month' | 'year' | 'total'): StatsRes
   const result = db.prepare(query).get() as any;
 
   // 数据库 activities.distance 存的是公里，统一转为米再返回（与 types.StatsResponse 约定一致）
-  const rawDistance = result.totalDistance ?? 0;
-  const totalDistanceMeters = rawDistance < 1000 ? rawDistance * 1000 : rawDistance;
+  const totalDistanceMeters = (result.totalDistance ?? 0) * 1000;
 
   return {
     totalActivities: result.totalActivities || 0,
