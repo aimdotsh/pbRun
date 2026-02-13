@@ -30,7 +30,7 @@ jobs:
       - name: Restore database cache
         uses: actions/cache@v4
         with:
-          path: data/activities.db
+          path: app/data/activities.db
           key: garmin-db-${{ github.sha }}
           restore-keys: |
             garmin-db-
@@ -46,15 +46,15 @@ jobs:
       - name: Show sync results
         if: always()
         run: |
-          if [ -f data/activities.db ]; then
-            echo "Database size: $(du -h data/activities.db | cut -f1)"
-            echo "Activities count: $(sqlite3 data/activities.db 'SELECT COUNT(*) FROM activities;' 2>/dev/null || echo 'N/A')"
+          if [ -f app/data/activities.db ]; then
+            echo "Database size: $(du -h app/data/activities.db | cut -f1)"
+            echo "Activities count: $(sqlite3 app/data/activities.db 'SELECT COUNT(*) FROM activities;' 2>/dev/null || echo 'N/A')"
           fi
 
       - name: Commit and push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/activities.db
+          git add app/data/activities.db
           git diff --staged --quiet || git commit -m "chore: update garmin data $(date +%Y-%m-%d)"
           git push

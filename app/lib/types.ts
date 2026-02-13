@@ -170,6 +170,12 @@ export interface ActivityQueryParams {
   endDate?: string;                              // 结束日期
 }
 
+export interface MonthSummary {
+  monthKey: string;                              // YYYY-MM
+  totalDistance: number;                          // 总距离（公里，与 activities.distance 一致）
+  count: number;                                 // 活动次数
+}
+
 export interface PaginatedResponse<T> {
   data: T[];                                     // 数据列表
   pagination: {
@@ -186,7 +192,27 @@ export interface StatsResponse {
   averagePace?: number;                          // 平均配速（秒/公里）
   averageHeartRate?: number;                     // 平均心率（bpm）
   totalAscent?: number;                          // 总爬升（米）
-  averageVDOT?: number;                          // 平均 VDOT 跑力值
+  averageVDOT?: number;                         // 平均 VDOT 跑力值
+  averageCadence?: number;                       // 平均步频（步/分钟）
+  averageStrideLength?: number;                  // 平均步幅（米）
+  totalTrainingLoad?: number;                   // 训练负荷（总和）
+}
+
+/** 个人纪录项：某距离的最佳成绩 */
+export interface PersonalRecordItem {
+  distanceLabel: string;                        // 如 "5公里"
+  durationSeconds: number | null;               // 用时（秒），null 表示无纪录
+  achievedAt: string | null;                     // 达成日期 ISO
+}
+
+/** 个人纪录 API 返回 */
+export interface PersonalRecordsResponse {
+  period: 'week' | 'month' | 'year' | 'total' | '6months';
+  startDate: string;                            // YYYY-MM-DD
+  endDate: string;
+  records: PersonalRecordItem[];
+  longestRunMeters: number;                     // 单次最长距离（米）
+  longestRunDate: string | null;                 // 达成日期
 }
 
 export interface VDOTDataPoint {
@@ -235,4 +261,19 @@ export interface VDOTTrendParams {
   startDate?: string;                            // 开始日期
   endDate?: string;                              // 结束日期
   groupBy: 'week' | 'month';                     // 聚合维度
+}
+
+/** 跑力配速区间：基于 VDOT 的 Z1-Z5 目标配速及该区间内 laps 的统计 */
+export interface PaceZoneStat {
+  zone: number;                                  // 1-5，对应 Z1-Z5
+  target_pace_sec_per_km: number;                 // 建议配速（秒/公里）
+  pace_min_sec_per_km: number;                    // 区间配速下限（秒/公里）
+  pace_max_sec_per_km: number;                    // 区间配速上限（秒/公里）
+  activity_count: number;
+  total_duration: number;
+  total_distance: number;
+  avg_pace: number | null;
+  avg_cadence: number | null;
+  avg_stride_length: number | null;
+  avg_heart_rate: number | null;
 }

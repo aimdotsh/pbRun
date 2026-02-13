@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getVDOTTrend } from '@/lib/db';
-import type { VDOTTrendParams } from '@/lib/types';
+import { getVDOTTrend } from '@/app/lib/db';
+import type { VDOTTrendParams } from '@/app/lib/types';
 
 export async function GET(request: NextRequest) {
   try {

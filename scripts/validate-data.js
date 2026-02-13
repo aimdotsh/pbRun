@@ -23,7 +23,7 @@ function log(message, color = 'reset') {
 }
 
 class DataValidator {
-  constructor(dbPath = 'data/activities.db') {
+  constructor(dbPath = 'app/data/activities.db') {
     this.dbPath = path.resolve(dbPath);
     this.db = new Database(this.dbPath, { readonly: true });
     this.issues = [];

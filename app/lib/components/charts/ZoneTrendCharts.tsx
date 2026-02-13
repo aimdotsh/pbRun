@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
-import { formatPace } from '@/lib/format';
+import { formatPace } from '@/app/lib/format';
 
 export interface ZoneTrendSeriesPoint {
   period: string;

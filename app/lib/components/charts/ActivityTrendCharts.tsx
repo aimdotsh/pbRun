@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
-import type { ActivityRecord } from '@/lib/types';
+import type { ActivityRecord } from '@/app/lib/types';
 
 interface ActivityTrendChartsProps {
   records: ActivityRecord[];
+  /** 为 true 时不渲染区块标题（由父级卡片提供） */
+  hideTitle?: boolean;
 }
 
 function formatElapsed(sec: number): string {
@@ -90,7 +92,7 @@ function buildLineChart(
   };
 }
 
-export default function ActivityTrendCharts({ records }: ActivityTrendChartsProps) {
+export default function ActivityTrendCharts({ records, hideTitle }: ActivityTrendChartsProps) {
   const hrRef = useRef<HTMLDivElement>(null);
   const cadenceRef = useRef<HTMLDivElement>(null);
   const strideRef = useRef<HTMLDivElement>(null);
@@ -139,10 +141,12 @@ export default function ActivityTrendCharts({ records }: ActivityTrendChartsProp
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="mb-4 text-lg font-medium text-zinc-800 dark:text-zinc-200">
-        心率 / 步频 / 步幅趋势
-      </h2>
+    <div className="flex flex-col gap-3">
+      {!hideTitle && (
+        <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
+          心率 / 步频 / 步幅趋势
+        </h2>
+      )}
       <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-3">
         {hasHr && (
           <div className="rounded-xl border border-zinc-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-900">
@@ -160,6 +164,6 @@ export default function ActivityTrendCharts({ records }: ActivityTrendChartsProp
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

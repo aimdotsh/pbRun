@@ -12,9 +12,9 @@ import {
   formatCadence,
   formatInt,
   formatTemp,
-} from '@/lib/format';
-import type { Activity, ActivityLap, ActivityRecord } from '@/lib/types';
-import ActivityTrendCharts from '@/lib/components/charts/ActivityTrendCharts';
+} from '@/app/lib/format';
+import type { Activity, ActivityLap, ActivityRecord } from '@/app/lib/types';
+import ActivityTrendCharts from '@/app/lib/components/charts/ActivityTrendCharts';
 
 export default function ActivityDetailPage() {
   const params = useParams();
@@ -83,7 +83,7 @@ export default function ActivityDetailPage() {
           {error ?? '活动不存在'}
         </div>
         <Link
-          href="/pages/list"
+          href="/list"
           className="text-blue-600 hover:underline dark:text-blue-400"
         >
           返回活动列表
@@ -108,92 +108,87 @@ export default function ActivityDetailPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          <Link href="/pages/list" className="hover:underline">活动列表</Link>
+          <Link href="/list" className="hover:underline">活动列表</Link>
           <span>/</span>
           <span>活动 #{activity.activity_id}</span>
         </div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
           {activity.name || `跑步 ${formatDateTime(activity.start_time_local ?? activity.start_time)}`}
         </h1>
       </div>
 
-      <section>
-        <h2 className="mb-3 text-lg font-medium text-zinc-800 dark:text-zinc-200">
+      {/* 概览 - 卡片区块 */}
+      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
           概览
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {statCards.map(({ label, value }) => (
-            <div
-              key={label}
-              className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                {label}
-              </div>
-              <div className="mt-0.5 font-medium text-zinc-900 dark:text-zinc-100">
-                {value}
-              </div>
+            <div key={label} className="rounded-lg bg-zinc-50 py-2.5 px-3 dark:bg-zinc-800/50">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
+              <div className="mt-0.5 font-medium text-zinc-900 dark:text-zinc-100">{value}</div>
             </div>
           ))}
         </div>
       </section>
 
       {records.length > 0 ? (
-        <ActivityTrendCharts records={records} />
+        <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
+            心率 / 步频 / 步幅趋势
+          </h2>
+          <ActivityTrendCharts records={records} hideTitle />
+        </section>
       ) : null}
 
       {activity.average_gct_balance != null ? (
-        <section>
-          <h2 className="mb-3 text-lg font-medium text-zinc-800 dark:text-zinc-200">
+        <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
             跑步动态
           </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">触地平衡</div>
-              <div className="mt-0.5 font-medium">{activity.average_gct_balance.toFixed(1)} %</div>
-            </div>
+          <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50 inline-block">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">触地平衡</div>
+            <div className="mt-0.5 font-medium text-zinc-900 dark:text-zinc-100">{activity.average_gct_balance.toFixed(1)} %</div>
           </div>
         </section>
       ) : null}
 
-      <section>
-        <h2 className="mb-3 text-lg font-medium text-zinc-800 dark:text-zinc-200">
+      {/* 分段数据 - 卡片区块 */}
+      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
           分段数据
         </h2>
         {laps.length === 0 ? (
-          <div className="rounded-xl border border-zinc-200 bg-white py-8 text-center text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
             暂无分段数据
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <table className="w-full min-w-[720px] text-left text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm border-collapse">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">分段</th>
-                  <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">距离</th>
-                  <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">时长</th>
-                  <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">配速</th>
-                  <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">心率</th>
-                  <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">步频</th>
-                  <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">爬升</th>
+                <tr className="border-b border-zinc-200 dark:border-zinc-700">
+                  <th className="px-3 py-2 font-medium text-zinc-700 dark:text-zinc-300">分段</th>
+                  <th className="px-3 py-2 font-medium text-zinc-700 dark:text-zinc-300">距离</th>
+                  <th className="px-3 py-2 font-medium text-zinc-700 dark:text-zinc-300">时长</th>
+                  <th className="px-3 py-2 font-medium text-zinc-700 dark:text-zinc-300">配速</th>
+                  <th className="px-3 py-2 font-medium text-zinc-700 dark:text-zinc-300">心率</th>
+                  <th className="px-3 py-2 font-medium text-zinc-700 dark:text-zinc-300">步频</th>
+                  <th className="px-3 py-2 font-medium text-zinc-700 dark:text-zinc-300">爬升</th>
                 </tr>
               </thead>
               <tbody>
                 {laps.map((lap) => (
-                  <tr
-                    key={lap.id}
-                    className="border-b border-zinc-100 dark:border-zinc-800"
-                  >
-                    <td className="px-4 py-3 font-medium">{lap.lap_index}</td>
-                    <td className="px-4 py-3">{formatDistanceFromMeters(lap.distance)}</td>
-                    <td className="px-4 py-3">{formatDuration(lap.duration)}</td>
-                    <td className="px-4 py-3">{formatPace(lap.average_pace)}</td>
-                    <td className="px-4 py-3">{formatInt(lap.average_heart_rate, 'bpm')}</td>
-                    <td className="px-4 py-3">{formatCadence(lap.average_cadence)}</td>
-                    <td className="px-4 py-3">
+                  <tr key={lap.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                    <td className="px-3 py-2 font-medium">{lap.lap_index}</td>
+                    <td className="px-3 py-2">{formatDistanceFromMeters(lap.distance)}</td>
+                    <td className="px-3 py-2">{formatDuration(lap.duration)}</td>
+                    <td className="px-3 py-2">{formatPace(lap.average_pace)}</td>
+                    <td className="px-3 py-2">{formatInt(lap.average_heart_rate, 'bpm')}</td>
+                    <td className="px-3 py-2">{formatCadence(lap.average_cadence)}</td>
+                    <td className="px-3 py-2">
                       {lap.total_ascent != null ? `${lap.total_ascent} m` : '--'}
                     </td>
                   </tr>

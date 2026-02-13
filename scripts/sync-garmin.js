@@ -61,7 +61,7 @@ class GarminSync {
     this.onlyRunning = options.onlyRunning !== false;
     this.withLaps = options.withLaps !== false;
     this.limit = options.limit || null;
-    this.dbPath = options.dbPath || 'data/activities.db';
+    this.dbPath = options.dbPath || 'app/data/activities.db';
 
     if (!this.secretString) {
       throw new Error('GARMIN_SECRET_STRING environment variable not set');
@@ -304,7 +304,7 @@ async function main() {
     onlyRunning: !args.includes('--all-types'),
     withLaps: !args.includes('--no-laps'),
     limit: null,
-    dbPath: 'data/activities.db'
+    dbPath: 'app/data/activities.db'
   };
 
   // Parse limit

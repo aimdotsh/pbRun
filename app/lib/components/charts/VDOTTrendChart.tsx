@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
-import type { VDOTTrendPoint } from '@/lib/types';
+import type { VDOTTrendPoint } from '@/app/lib/types';
 
 interface VDOTTrendChartProps {
   data: VDOTTrendPoint[];

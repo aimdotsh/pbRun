@@ -34,6 +34,16 @@ export function formatDuration(seconds: number | null | undefined): string {
   return `${m}:${pad(s)}`;
 }
 
+/** 时长：秒 → "00:07:04"（个人纪录用，始终 HH:MM:SS） */
+export function formatDurationRecord(seconds: number | null | undefined): string {
+  if (seconds == null || Number.isNaN(seconds)) return '--';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
 /** 日期时间：ISO 字符串 → 本地日期时间显示 */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '--';
@@ -55,6 +65,36 @@ export function formatDate(iso: string | null | undefined): string {
     month: '2-digit',
     day: '2-digit',
   });
+}
+
+const WEEKDAY_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+/** 列表项日期时间：YYYY/MM/DD(周x) HH:MM */
+export function formatListDateTime(iso: string | null | undefined): string {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const week = WEEKDAY_ZH[d.getDay()];
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}/${m}/${day}(${week}) ${h}:${min}`;
+}
+
+/** 配速简短形式：4'57''（分'秒''） */
+export function formatPaceShort(secondsPerKm: number | null | undefined): string {
+  if (secondsPerKm == null || Number.isNaN(secondsPerKm)) return '--';
+  const min = Math.floor(secondsPerKm / 60);
+  const sec = Math.round(secondsPerKm % 60);
+  return `${min}'${sec.toString().padStart(2, '0')}''`;
+}
+
+/** 月份标题：2026年2月 */
+export function formatMonthYear(yearMonth: string): string {
+  const [y, m] = yearMonth.split('-');
+  if (!y || !m) return yearMonth;
+  return `${y}年${parseInt(m, 10)}月`;
 }
 
 /** 心率等整数 */

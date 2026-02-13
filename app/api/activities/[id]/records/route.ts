@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getActivityRecords, getActivityById } from '@/lib/db';
-import type { ActivityRecord } from '@/lib/types';
+import { getActivityRecords, getActivityById } from '@/app/lib/db';
+import type { ActivityRecord } from '@/app/lib/types';
 
 export async function GET(
   request: NextRequest,

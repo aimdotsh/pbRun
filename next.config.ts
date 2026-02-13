@@ -9,6 +9,10 @@ const projectRoot = configDir.endsWith(".next")
   : configDir;
 
 const nextConfig: NextConfig = {
+  // 将 app/data/activities.db 打入 API 的 serverless 包，否则 Vercel 部署后找不到库文件
+  outputFileTracingIncludes: {
+    "/api/*": ["./app/data/activities.db"],
+  },
   turbopack: {
     root: path.resolve(projectRoot),
     // 强制 tailwindcss 从本项目 node_modules 解析，避免被解析到父目录

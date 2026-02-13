@@ -1,7 +1,8 @@
 'use client';
 
-import type { HrZoneStat } from '@/lib/types';
-import { formatPace } from '@/lib/format';
+import { useRouter } from 'next/navigation';
+import type { HrZoneStat } from '@/app/lib/types';
+import { formatPace } from '@/app/lib/format';
 
 interface HrZoneMetricsTableProps {
   data: HrZoneStat[];
@@ -48,6 +49,7 @@ const HR_ZONE_COLORS: Record<number, string> = {
 };
 
 export default function HrZoneMetricsTable({ data, zoneRanges, trendLinkParams }: HrZoneMetricsTableProps) {
+  const router = useRouter();
   // Aggregate by HR zone
   const zoneStats: Record<number, {
     activity_count: number;
@@ -111,7 +113,7 @@ export default function HrZoneMetricsTable({ data, zoneRanges, trendLinkParams }
       endDate: trendLinkParams.endDate,
       groupBy: trendLinkParams.groupBy,
     }).toString();
-    return `/pages/analysis/zone/${zoneNum}?${q}`;
+    return `/analysis/zone/${zoneNum}?${q}`;
   };
 
   if (rows.length === 0) {
@@ -124,13 +126,13 @@ export default function HrZoneMetricsTable({ data, zoneRanges, trendLinkParams }
 
   return (
     <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <table className="w-full min-w-[360px] text-left text-sm">
+      <table className="w-full min-w-[260px] text-left text-sm border-collapse">
         <thead>
-          <tr className="border-b border-zinc-200 dark:border-zinc-800">
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">心率区间</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">配速</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">步频</th>
-            <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">步幅</th>
+          <tr className="border-b border-zinc-200 dark:border-zinc-700">
+            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">心率区间</th>
+            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">配速</th>
+            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">步频</th>
+            <th className="px-1.5 py-1.5 font-medium text-zinc-700 dark:text-zinc-300">步幅</th>
           </tr>
         </thead>
         <tbody>
@@ -141,21 +143,19 @@ export default function HrZoneMetricsTable({ data, zoneRanges, trendLinkParams }
                 key={row.zone}
                 role={href ? 'button' : undefined}
                 tabIndex={href ? 0 : undefined}
-                className={`border-b border-zinc-100 last:border-0 transition-colors dark:border-zinc-800 ${
-                  href ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''
-                }`}
-                onClick={href ? () => window.open(href, '_blank', 'noopener,noreferrer') : undefined}
-                onKeyDown={href ? (e) => e.key === 'Enter' && window.open(href, '_blank', 'noopener,noreferrer') : undefined}
+                className={`transition-colors ${href ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''}`}
+                onClick={href ? () => router.push(href) : undefined}
+                onKeyDown={href ? (e) => e.key === 'Enter' && router.push(href) : undefined}
               >
-                <td className="px-4 py-3">
-                  <span className={`inline-block px-2 py-1 rounded ${HR_ZONE_COLORS[row.zone]}`}>
-                    <span className="block">{row.name}</span>
-                    <span className="block text-xs opacity-90">{row.rangeBpm}</span>
+                <td className="px-1.5 py-1.5">
+                  <span className={`inline-block rounded px-1 py-0.5 ${HR_ZONE_COLORS[row.zone]}`}>
+                    <span className="block leading-tight">{row.name}</span>
+                    <span className="block text-xs opacity-90 leading-tight">{row.rangeBpm}</span>
                   </span>
                 </td>
-                <td className="px-4 py-3">{row.avg_pace !== null ? formatPace(row.avg_pace) : '--'}</td>
-                <td className="px-4 py-3">{row.avg_cadence !== null ? row.avg_cadence.toFixed(0) : '--'}</td>
-                <td className="px-4 py-3">{row.avg_stride !== null ? row.avg_stride.toFixed(2) + ' m' : '--'}</td>
+                <td className="px-1.5 py-1.5">{row.avg_pace !== null ? formatPace(row.avg_pace) : '--'}</td>
+                <td className="px-1.5 py-1.5">{row.avg_cadence !== null ? row.avg_cadence.toFixed(0) : '--'}</td>
+                <td className="px-1.5 py-1.5">{row.avg_stride !== null ? row.avg_stride.toFixed(2) + ' m' : '--'}</td>
               </tr>
             );
           })}

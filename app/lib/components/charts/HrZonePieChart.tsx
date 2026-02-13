@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
-import type { HrZoneStat } from '@/lib/types';
+import type { HrZoneStat } from '@/app/lib/types';
 
 interface HrZonePieChartProps {
   data: HrZoneStat[];

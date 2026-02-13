@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getHrZoneStats } from '@/lib/db';
-import type { HrZoneAnalysisParams } from '@/lib/types';
+import { getHrZoneStats } from '@/app/lib/db';
+import type { HrZoneAnalysisParams } from '@/app/lib/types';
 
 export async function GET(request: NextRequest) {
   try {

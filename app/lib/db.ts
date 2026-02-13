@@ -1,6 +1,6 @@
 /**
  * SQLite database access layer using better-sqlite3.
- * Vercel 部署：需将 data/activities.db 纳入仓库或在构建时注入，并保留 data 目录（已含 data/.gitkeep）。
+ * Vercel 部署：需将 app/data/activities.db 纳入仓库或在构建时注入，并保留 app/data 目录（已含 .gitkeep）。
  */
 
 import Database from 'better-sqlite3';
@@ -18,7 +18,12 @@ import {
   VDOTTrendPoint,
   HrZoneAnalysisParams,
   VDOTTrendParams,
+  MonthSummary,
+  PersonalRecordsResponse,
+  PersonalRecordItem,
+  PaceZoneStat,
 } from './types';
+import { getPaceZoneBoundsFromVdot, getPaceZoneCenterFromVdot } from './vdot-pace';
 
 // Database connection (singleton)
 let db: Database.Database | null = null;
@@ -26,12 +31,12 @@ let db: Database.Database | null = null;
 function getDatabase(): Database.Database {
   if (!db) {
     const dbPath =
-      process.env.DB_PATH || path.join(process.cwd(), 'data', 'activities.db');
+      process.env.DB_PATH || path.join(process.cwd(), 'app', 'data', 'activities.db');
 
     if (!fs.existsSync(dbPath)) {
       throw new Error(
         `Database file not found: ${dbPath}. ` +
-          'For Vercel deployment: add data/activities.db to the repo (e.g. allow in .gitignore) or set DB_PATH to a path that exists.'
+          'For Vercel deployment: add app/data/activities.db to the repo (e.g. allow in .gitignore) or set DB_PATH to a path that exists.'
       );
     }
 
@@ -91,6 +96,46 @@ export function getActivities(
 }
 
 /**
+ * Get per-month summaries (month key, total distance, count) for activity list.
+ * Uses start_time_local for month; distance is stored in km.
+ * When limit/offset provided, returns only that page and total count for pagination.
+ */
+export function getMonthSummaries(limit?: number, offset?: number): MonthSummary[] | { data: MonthSummary[]; total: number } {
+  const db = getDatabase();
+  const baseSelect = `
+    SELECT
+      substr(start_time_local, 1, 7) AS monthKey,
+      SUM(distance) AS totalDistance,
+      COUNT(*) AS count
+    FROM activities
+    WHERE start_time_local IS NOT NULL AND length(start_time_local) >= 7
+    GROUP BY monthKey
+    ORDER BY monthKey DESC
+  `;
+  if (limit == null && offset == null) {
+    const rows = db.prepare(baseSelect).all() as { monthKey: string; totalDistance: number; count: number }[];
+    return rows.map((r) => ({
+      monthKey: r.monthKey,
+      totalDistance: r.totalDistance ?? 0,
+      count: r.count ?? 0,
+    }));
+  }
+  const totalRow = db.prepare(
+    `SELECT COUNT(*) AS total FROM (SELECT 1 FROM activities WHERE start_time_local IS NOT NULL AND length(start_time_local) >= 7 GROUP BY substr(start_time_local, 1, 7))`
+  ).get() as { total: number };
+  const total = totalRow?.total ?? 0;
+  const limitVal = Math.max(1, Math.min(100, limit ?? 6));
+  const offsetVal = Math.max(0, offset ?? 0);
+  const rows = db.prepare(`${baseSelect} LIMIT ? OFFSET ?`).all(limitVal, offsetVal) as { monthKey: string; totalDistance: number; count: number }[];
+  const data = rows.map((r) => ({
+    monthKey: r.monthKey,
+    totalDistance: r.totalDistance ?? 0,
+    count: r.count ?? 0,
+  }));
+  return { data, total };
+}
+
+/**
  * Get a single activity by ID.
  */
 export function getActivityById(activityId: number): Activity | null {
@@ -125,15 +170,13 @@ export function getActivityRecords(activityId: number): ActivityRecord[] {
 /**
  * Get statistics for a time period.
  */
-export function getStats(period?: 'week' | 'month' | 'year'): StatsResponse {
+export function getStats(period?: 'week' | 'month' | 'year' | 'total'): StatsResponse {
   const db = getDatabase();
 
-  // Build date filter
   let dateFilter = '';
-  if (period) {
+  if (period && period !== 'total') {
     const now = new Date();
     let startDate: Date;
-
     switch (period) {
       case 'week':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -144,12 +187,12 @@ export function getStats(period?: 'week' | 'month' | 'year'): StatsResponse {
       case 'year':
         startDate = new Date(now.getFullYear(), 0, 1);
         break;
+      default:
+        startDate = now;
     }
-
     dateFilter = `WHERE start_time >= '${startDate.toISOString()}'`;
   }
 
-  // Query stats
   const query = `
     SELECT
       COUNT(*) as totalActivities,
@@ -158,22 +201,248 @@ export function getStats(period?: 'week' | 'month' | 'year'): StatsResponse {
       AVG(average_pace) as averagePace,
       AVG(average_heart_rate) as averageHeartRate,
       SUM(total_ascent) as totalAscent,
-      AVG(vdot_value) as averageVDOT
+      AVG(vdot_value) as averageVDOT,
+      AVG(average_cadence) as averageCadence,
+      AVG(average_stride_length) as averageStrideLength,
+      SUM(training_load) as totalTrainingLoad
     FROM activities
     ${dateFilter}
   `;
 
   const result = db.prepare(query).get() as any;
 
+  // 数据库 activities.distance 存的是公里，统一转为米再返回（与 types.StatsResponse 约定一致）
+  const rawDistance = result.totalDistance ?? 0;
+  const totalDistanceMeters = rawDistance < 1000 ? rawDistance * 1000 : rawDistance;
+
   return {
     totalActivities: result.totalActivities || 0,
-    totalDistance: result.totalDistance || 0,
+    totalDistance: totalDistanceMeters,
     totalDuration: result.totalDuration || 0,
-    averagePace: result.averagePace || undefined,
-    averageHeartRate: result.averageHeartRate || undefined,
-    totalAscent: result.totalAscent || undefined,
-    averageVDOT: result.averageVDOT || undefined,
+    averagePace: result.averagePace ?? undefined,
+    averageHeartRate: result.averageHeartRate ?? undefined,
+    totalAscent: result.totalAscent ?? undefined,
+    averageVDOT: result.averageVDOT ?? undefined,
+    averageCadence: result.averageCadence ?? undefined,
+    averageStrideLength: result.averageStrideLength ?? undefined,
+    totalTrainingLoad: result.totalTrainingLoad ?? undefined,
   };
+}
+
+/** 个人纪录目标距离（米） */
+const PR_DISTANCES = [
+  { meters: 1600, label: '1.6公里' },
+  { meters: 3000, label: '3公里' },
+  { meters: 5000, label: '5公里' },
+  { meters: 10000, label: '10公里' },
+  { meters: 21100, label: '半程马拉松' },
+  { meters: 42200, label: '全程马拉松' },
+] as const;
+
+/**
+ * 计算单次活动中跑完 targetMeters 的最短用时。
+ * activityDistanceMeters/duration 已统一为米/秒；lap.distance 在 DB 中为米。
+ */
+function bestTimeForDistanceMeters(
+  activityId: number,
+  startTime: string,
+  activityDistanceMeters: number,
+  activityDurationSeconds: number,
+  targetMeters: number,
+  getLaps: (activityId: number) => ActivityLap[]
+): { durationSeconds: number; achievedAt: string } | null {
+  if (activityDistanceMeters < targetMeters) return null;
+  const laps = getLaps(activityId);
+  if (laps.length === 0) {
+    const ratio = targetMeters / activityDistanceMeters;
+    return {
+      durationSeconds: Math.round(activityDurationSeconds * ratio),
+      achievedAt: startTime,
+    };
+  }
+  let cumDist = 0;
+  let cumTime = 0;
+  for (const lap of laps) {
+    const lapDist = lap.distance ?? 0;
+    const lapDuration = lap.duration ?? 0;
+    if (cumDist + lapDist >= targetMeters) {
+      const remaining = targetMeters - cumDist;
+      const fraction = lapDist > 0 ? remaining / lapDist : 0;
+      cumTime += lapDuration * fraction;
+      return { durationSeconds: Math.round(cumTime), achievedAt: startTime };
+    }
+    cumDist += lapDist;
+    cumTime += lapDuration;
+  }
+  return null;
+}
+
+/**
+ * Get personal records for a time period.
+ */
+export function getPersonalRecords(period: 'week' | 'month' | 'year' | 'total' | '6months'): PersonalRecordsResponse {
+  const db = getDatabase();
+  const now = new Date();
+  let startDate: Date;
+  let endDate = now;
+  switch (period) {
+    case 'week':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'month':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case 'year':
+      startDate = new Date(now.getFullYear(), 0, 1);
+      break;
+    case '6months':
+      startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+      break;
+    default:
+      startDate = new Date(0);
+  }
+  const startStr = startDate.toISOString().slice(0, 10);
+  const endStr = endDate.toISOString().slice(0, 10);
+
+  const rows = db.prepare(
+    `SELECT activity_id, distance, duration, start_time FROM activities
+     WHERE start_time >= ? AND start_time <= ? AND distance > 0
+     ORDER BY start_time ASC`
+  ).all(startStr, endStr + 'T23:59:59.999Z') as { activity_id: number; distance: number; duration: number; start_time: string }[];
+
+  // 数据库 activities.distance 存的是公里，统一转为米再参与计算
+  const activities = rows.map((a) => ({
+    ...a,
+    distanceMeters: a.distance < 1000 ? a.distance * 1000 : a.distance,
+  }));
+
+  const getLaps = (activityId: number) => getActivityLaps(activityId);
+  const records: PersonalRecordItem[] = PR_DISTANCES.map(({ meters, label }) => {
+    let best: { durationSeconds: number; achievedAt: string } | null = null;
+    for (const a of activities) {
+      const r = bestTimeForDistanceMeters(a.activity_id, a.start_time, a.distanceMeters, a.duration, meters, getLaps);
+      if (r && (best == null || r.durationSeconds < best.durationSeconds)) best = r;
+    }
+    return {
+      distanceLabel: label + '最佳成绩',
+      durationSeconds: best?.durationSeconds ?? null,
+      achievedAt: best?.achievedAt ?? null,
+    };
+  });
+
+  let longestRunMeters = 0;
+  let longestRunDate: string | null = null;
+  for (const a of activities) {
+    if (a.distanceMeters > longestRunMeters) {
+      longestRunMeters = a.distanceMeters;
+      longestRunDate = a.start_time;
+    }
+  }
+
+  return {
+    period,
+    startDate: startStr,
+    endDate: endStr,
+    records,
+    longestRunMeters,
+    longestRunDate,
+  };
+}
+
+/** Lap 行 + 活动开始时间，用于按日期过滤 */
+interface LapRow {
+  activity_id: number;
+  lap_index: number;
+  distance: number;
+  duration: number;
+  average_pace: number | null;
+  average_heart_rate: number | null;
+  average_cadence: number | null;
+  average_stride_length: number | null;
+}
+
+/**
+ * 根据当前跑力 VDOT 与日期范围，统计各配速区间（Z1-Z5）内的 laps 聚合：心率、步频、步幅
+ */
+export function getPaceZoneStats(
+  vdot: number,
+  startDate: string,
+  endDate: string
+): PaceZoneStat[] {
+  if (vdot <= 0) return [];
+  const db = getDatabase();
+  const bounds = getPaceZoneBoundsFromVdot(vdot);
+
+  const rows = db.prepare(
+    `SELECT al.activity_id, al.lap_index, al.distance, al.duration,
+            al.average_pace, al.average_heart_rate, al.average_cadence, al.average_stride_length
+     FROM activity_laps al
+     INNER JOIN activities a ON a.activity_id = al.activity_id
+     WHERE a.start_time >= ? AND a.start_time <= ?
+       AND al.average_pace IS NOT NULL AND al.distance > 0`
+  ).all(startDate, endDate + 'T23:59:59.999Z') as LapRow[];
+
+  const zoneStats: Record<number, {
+    activity_count: number;
+    total_duration: number;
+    total_distance: number;
+    avg_pace: number[];
+    avg_heart_rate: number[];
+    avg_cadence: number[];
+    avg_stride: number[];
+  }> = {};
+  for (let z = 1; z <= 5; z++) {
+    zoneStats[z] = {
+      activity_count: 0,
+      total_duration: 0,
+      total_distance: 0,
+      avg_pace: [],
+      avg_heart_rate: [],
+      avg_cadence: [],
+      avg_stride: [],
+    };
+  }
+
+  const activityIds = new Set<number>();
+  for (const lap of rows) {
+    const pace = lap.average_pace!;
+    let zone = 0;
+    for (let z = 1; z <= 5; z++) {
+      const b = bounds[z];
+      if (b && pace >= b.paceMin && pace <= b.paceMax) {
+        zone = z;
+        break;
+      }
+    }
+    if (zone === 0) continue;
+    const s = zoneStats[zone];
+    s.activity_count += 1;
+    s.total_duration += lap.duration;
+    s.total_distance += lap.distance;
+    s.avg_pace.push(pace);
+    if (lap.average_heart_rate != null) s.avg_heart_rate.push(lap.average_heart_rate);
+    if (lap.average_cadence != null) s.avg_cadence.push(lap.average_cadence);
+    if (lap.average_stride_length != null) s.avg_stride.push(lap.average_stride_length);
+  }
+
+  const centers = getPaceZoneCenterFromVdot(vdot);
+  return [1, 2, 3, 4, 5].map((zone) => {
+    const s = zoneStats[zone];
+    const b = bounds[zone];
+    return {
+      zone,
+      target_pace_sec_per_km: centers[zone] ?? 0,
+      pace_min_sec_per_km: b?.paceMin ?? 0,
+      pace_max_sec_per_km: b?.paceMax ?? 0,
+      activity_count: s.activity_count,
+      total_duration: s.total_duration,
+      total_distance: s.total_distance,
+      avg_pace: s.avg_pace.length > 0 ? s.avg_pace.reduce((a, x) => a + x, 0) / s.avg_pace.length : null,
+      avg_cadence: s.avg_cadence.length > 0 ? s.avg_cadence.reduce((a, x) => a + x, 0) / s.avg_cadence.length : null,
+      avg_stride_length: s.avg_stride.length > 0 ? s.avg_stride.reduce((a, x) => a + x, 0) / s.avg_stride.length : null,
+      avg_heart_rate: s.avg_heart_rate.length > 0 ? s.avg_heart_rate.reduce((a, x) => a + x, 0) / s.avg_heart_rate.length : null,
+    };
+  });
 }
 
 /**

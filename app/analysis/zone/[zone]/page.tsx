@@ -2,9 +2,9 @@
 
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import ZoneTrendCharts from '@/lib/components/charts/ZoneTrendCharts';
-import type { ZoneTrendSeriesPoint } from '@/lib/components/charts/ZoneTrendCharts';
+import { useEffect, useState, useMemo } from 'react';
+import ZoneTrendCharts from '@/app/lib/components/charts/ZoneTrendCharts';
+import type { ZoneTrendSeriesPoint } from '@/app/lib/components/charts/ZoneTrendCharts';
 
 const HR_ZONE_NAMES: Record<number, string> = {
   1: 'Z1(轻松)',
@@ -22,14 +22,28 @@ const HR_ZONE_COLORS: Record<number, string> = {
   5: 'bg-red-100 dark:bg-red-900',
 };
 
+function getDefaultHalfYearRange(): { startDate: string; endDate: string } {
+  const now = new Date();
+  const endDate = now.toISOString().split('T')[0];
+  const start = new Date(now);
+  start.setMonth(start.getMonth() - 6);
+  const startDate = start.toISOString().split('T')[0];
+  return { startDate, endDate };
+}
+
 export default function ZoneTrendPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const zoneParam = params.zone as string;
   const zone = zoneParam ? parseInt(zoneParam, 10) : 0;
-  const startDate = searchParams.get('startDate') || '';
-  const endDate = searchParams.get('endDate') || '';
   const groupBy = searchParams.get('groupBy') || 'week';
+
+  const { startDate, endDate } = useMemo(() => {
+    const fromUrl = searchParams.get('startDate') || '';
+    const toUrl = searchParams.get('endDate') || '';
+    if (fromUrl && toUrl) return { startDate: fromUrl, endDate: toUrl };
+    return getDefaultHalfYearRange();
+  }, [searchParams]);
 
   const [seriesData, setSeriesData] = useState<ZoneTrendSeriesPoint[]>([]);
   const [rangeBpm, setRangeBpm] = useState<string>('');
@@ -72,7 +86,7 @@ export default function ZoneTrendPage() {
     return (
       <div className="flex flex-col gap-4 p-6">
         <p className="text-zinc-500">无效的心率区间</p>
-        <Link href="/pages/analysis" className="text-blue-600 hover:underline dark:text-blue-400">
+        <Link href="/analysis" className="text-blue-600 hover:underline dark:text-blue-400">
           返回数据分析
         </Link>
       </div>
@@ -83,20 +97,15 @@ export default function ZoneTrendPage() {
   const zoneColor = HR_ZONE_COLORS[zone];
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          <Link href="/pages/analysis" className="hover:underline">数据分析</Link>
-          <span>/</span>
-          <span>心率区间趋势</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className={`inline-block rounded px-3 py-1.5 text-base font-medium ${zoneColor}`}>
-            {zoneName}
-            {rangeBpm && <span className="ml-1 block text-xs opacity-90">{rangeBpm}</span>}
-          </span>
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">按时间范围</span>
-        </div>
+    <div className="mx-auto w-full max-w-3xl flex flex-col gap-6 p-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={`inline-block rounded px-3 py-1.5 text-base font-medium ${zoneColor}`}>
+          {zoneName}
+          {rangeBpm && <span className="ml-1 block text-xs opacity-90">{rangeBpm}</span>}
+        </span>
+        <span className="text-sm text-zinc-500 dark:text-zinc-400">
+          {startDate} 至 {endDate}
+        </span>
       </div>
 
       {error && (
@@ -108,7 +117,7 @@ export default function ZoneTrendPage() {
       {loading ? (
         <div className="py-12 text-center text-zinc-500">加载中…</div>
       ) : (
-        <ZoneTrendCharts seriesData={seriesData} chartHeight={320} />
+        <ZoneTrendCharts seriesData={seriesData} chartHeight={260} />
       )}
     </div>
   );

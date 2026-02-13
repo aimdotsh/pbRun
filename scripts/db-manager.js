@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 class DatabaseManager {
-  constructor(dbPath = 'data/activities.db') {
+  constructor(dbPath = 'app/data/activities.db') {
     this.dbPath = path.resolve(dbPath);
 
     // Ensure data directory exists

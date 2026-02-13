@@ -4,22 +4,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getStats } from '@/lib/db';
+import { getStats } from '@/app/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const period = searchParams.get('period') as 'week' | 'month' | 'year' | null;
+    const period = searchParams.get('period') as 'week' | 'month' | 'year' | 'total' | null;
 
-    // Validate period
-    if (period && !['week', 'month', 'year'].includes(period)) {
+    if (period && !['week', 'month', 'year', 'total'].includes(period)) {
       return NextResponse.json(
-        { error: 'Period must be one of: week, month, year' },
+        { error: 'Period must be one of: week, month, year, total' },
         { status: 400 }
       );
     }
 
-    // Get stats
     const stats = getStats(period || undefined);
 
     return NextResponse.json(stats);

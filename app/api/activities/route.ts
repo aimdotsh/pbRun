@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getActivities } from '@/lib/db';
-import { ActivityQueryParams } from '@/lib/types';
+import { getActivities } from '@/app/lib/db';
+import { ActivityQueryParams } from '@/app/lib/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (params.limit! < 1 || params.limit! > 100) {
+    if (params.limit! < 1 || params.limit! > 500) {
       return NextResponse.json(
-        { error: 'Limit must be between 1 and 100' },
+        { error: 'Limit must be between 1 and 500' },
         { status: 400 }
       );
     }

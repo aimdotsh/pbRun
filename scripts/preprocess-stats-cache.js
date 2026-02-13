@@ -401,7 +401,7 @@ function parseArgs() {
 (async function main() {
   try {
     const options = parseArgs();
-    const dbPath = process.env.DB_PATH || 'data/activities.db';
+    const dbPath = process.env.DB_PATH || 'app/data/activities.db';
     const maxHr = parseInt(process.env.MAX_HR) || 190;
     const restingHr = parseInt(process.env.RESTING_HR) || 55;
 

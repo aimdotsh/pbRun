@@ -74,7 +74,7 @@ function checkEnvVars() {
 }
 
 function checkDatabaseExists() {
-  const dbPath = path.join(process.cwd(), 'data', 'activities.db');
+  const dbPath = path.join(process.cwd(), 'app', 'data', 'activities.db');
   return fs.existsSync(dbPath);
 }
 
@@ -108,7 +108,7 @@ async function handleExistingDatabase() {
 
   if (dbExists) {
     logSection('检测到现有数据库');
-    log('发现现有数据库文件: data/activities.db', 'yellow');
+    log('发现现有数据库文件: app/data/activities.db', 'yellow');
     log('\n选项:', 'cyan');
     log('  1. 保留现有数据，只同步新活动 (推荐)', 'green');
     log('  2. 清空数据库，重新同步所有活动', 'yellow');
@@ -116,9 +116,9 @@ async function handleExistingDatabase() {
     const shouldClear = await askUserConfirmation('\n是否要清空数据库? (y/N): ');
 
     if (shouldClear) {
-      const dbPath = path.join(process.cwd(), 'data', 'activities.db');
+      const dbPath = path.join(process.cwd(), 'app', 'data', 'activities.db');
       clearDatabaseData(dbPath);
-      log('\n✓ 数据库内容已清空（保留 data/activities.db）', 'green');
+      log('\n✓ 数据库内容已清空（保留 app/data/activities.db）', 'green');
       return 'full';
     } else {
       log('\n✓ 保留现有数据，将进行增量同步', 'green');
@@ -163,7 +163,7 @@ async function runSync() {
 function showDatabaseStats() {
   logSection('数据库统计');
 
-  const dbPath = path.join(process.cwd(), 'data', 'activities.db');
+  const dbPath = path.join(process.cwd(), 'app', 'data', 'activities.db');
 
   if (!fs.existsSync(dbPath)) {
     log('数据库文件不存在', 'yellow');
