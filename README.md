@@ -139,10 +139,8 @@ npm install
 ### 2. 配置 Garmin 认证
 
 ```bash
-# 获取 Garmin 认证 Token
-node scripts/get-garmin-token.js
-
-# 按提示输入用户名和密码，会自动生成 GARMIN_SECRET_STRING
+# 获取 Garmin 认证 Token（会从 .env 读取 GARMIN_EMAIL/GARMIN_PASSWORD，未配置时按提示输入）
+python3 scripts/get_garmin_token.py
 ```
 
 ### 3. 配置环境变量

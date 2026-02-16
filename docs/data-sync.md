@@ -170,10 +170,10 @@ VDOT (V̇O2max) 是由 Jack Daniels 提出的跑力指标，基于跑步成绩�
 运行以下命令获取认证 Token：
 
 ```bash
-node scripts/get-garmin-token.js
+python3 scripts/get_garmin_token.py
 ```
 
-按提示输入 Garmin 用户名和密码，会自动生成 `GARMIN_SECRET_STRING`。
+脚本会从 .env 读取 `GARMIN_EMAIL`/`GARMIN_PASSWORD`（未配置时按提示输入），并输出 `GARMIN_SECRET_STRING`。
 
 **原理**:
 
@@ -367,7 +367,7 @@ CREATE TABLE vdot_trend (
 
 ```bash
 # 重新获取 Token
-node scripts/get-garmin-token.js
+python3 scripts/get_garmin_token.py
 
 # 更新 .env 和 GitHub Secrets
 ```

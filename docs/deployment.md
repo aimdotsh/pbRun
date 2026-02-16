@@ -35,11 +35,11 @@ cd garmin_data
 # 安装依赖
 npm install
 
-# 获取 Token
-node scripts/get-garmin-token.js
+# 获取 Token（会从 .env 读取 GARMIN_EMAIL/GARMIN_PASSWORD，未配置时按提示输入）
+python3 scripts/get_garmin_token.py
 ```
 
-按提示输入你的 Garmin 用户名和密码，脚本会自动生成 `GARMIN_SECRET_STRING`。
+按提示输入你的 Garmin 用户名和密码（或先在 .env 中配置），脚本会输出 `GARMIN_SECRET_STRING`。
 
 示例输出：
 
@@ -285,7 +285,7 @@ https://your-project.vercel.app/api/vdot?days=30
 
 **解决方案**:
 
-1. 重新运行 `node scripts/get-garmin-token.js` 获取新 Token
+1. 重新运行 `python3 scripts/get_garmin_token.py` 获取新 Token
 2. 更新 GitHub Secrets 中的 `GARMIN_SECRET_STRING`
 3. 手动重新运行 workflow
 
