@@ -138,7 +138,7 @@ class GarminFITParser {
 
     const activityData = {
       start_time: this._convertTimestamp(session.start_time),
-      start_time_local: this._convertTimestamp(session.timestamp),
+      start_time_local: this._convertTimestamp(session.start_time) || this._convertTimestamp(session.timestamp),
       distance: this._safeGetFloat(session, 'total_distance'),
       duration: this._safeGetInt(session, 'total_elapsed_time'),
       moving_time: this._safeGetInt(session, 'total_timer_time'),

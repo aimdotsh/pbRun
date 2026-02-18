@@ -12,9 +12,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const activityId = parseInt(id);
 
-    if (isNaN(activityId)) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Invalid activity ID' },
         { status: 400 }
@@ -22,7 +21,7 @@ export async function GET(
     }
 
     // Check if activity exists
-    const activity = getActivityById(activityId);
+    const activity = getActivityById(id);
     if (!activity) {
       return NextResponse.json(
         { error: 'Activity not found' },
@@ -31,10 +30,10 @@ export async function GET(
     }
 
     // Get laps
-    const laps = getActivityLaps(activityId);
+    const laps = getActivityLaps(id);
 
     return NextResponse.json({
-      activity_id: activityId,
+      activity_id: id,
       laps,
     });
   } catch (error) {

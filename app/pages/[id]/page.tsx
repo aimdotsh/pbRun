@@ -9,13 +9,15 @@ interface PageProps {
 
 export default async function ActivityDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const activityId = id ? parseInt(id, 10) : NaN;
 
-  if (!id || Number.isNaN(activityId)) {
+  if (!id) {
     return (
       <div className="text-zinc-500">无效的活动 ID</div>
     );
   }
+
+  // 支持字符串 ID（COROS: coros_xxx）和数字 ID（Garmin）
+  const activityId = id;
 
   const [activity, laps, records] = await Promise.all([
     getActivityById(activityId),

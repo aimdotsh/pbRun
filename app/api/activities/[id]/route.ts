@@ -12,16 +12,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const activityId = parseInt(id);
 
-    if (isNaN(activityId)) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Invalid activity ID' },
         { status: 400 }
       );
     }
 
-    const activity = getActivityById(activityId);
+    // 支持字符串 ID（COROS: coros_xxx）和数字 ID（Garmin）
+    const activity = getActivityById(id);
 
     if (!activity) {
       return NextResponse.json(

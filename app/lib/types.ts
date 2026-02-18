@@ -4,7 +4,7 @@
 
 export interface Activity {
   // 基础信息
-  activity_id: number;                           // 活动ID（主键）
+  activity_id: string;                           // 活动ID（主键，支持字符串和数字）
   name: string;                                  // 活动名称
   activity_type: string;                         // 活动类型（默认：跑步）
   sport_type?: string;                           // 运动主类型（FIT sport，如跑步、健身器械）
@@ -80,6 +80,9 @@ export interface Activity {
   // VDOT 跑力值
   vdot_value?: number;                           // VDOT 跑力值
   training_load?: number;                        // 训练负荷
+  
+  // 数据来源
+  source?: string;                               // 数据来源（garmin, coros）
 
   // 元数据
   created_at: string;                            // 创建时间
@@ -88,7 +91,7 @@ export interface Activity {
 
 export interface ActivityLap {
   id: number;                                    // 分段ID（主键，自增）
-  activity_id: number;                           // 活动ID（外键）
+  activity_id: string;                           // 活动ID（外键）
   lap_index: number;                             // 分段编号
 
   // 时间数据
@@ -154,7 +157,7 @@ export interface ActivityLap {
 /** 单条活动内逐条记录（用于心率/步频/步幅/配速趋势图） */
 export interface ActivityRecord {
   id?: number;
-  activity_id: number;
+  activity_id: string;
   record_index: number;
   elapsed_sec: number;                            // 相对活动开始的秒数
   heart_rate?: number | null;                     // 心率（bpm）

@@ -7,6 +7,7 @@ const navItems = [
   { href: '/list', label: '运动记录' },
   { href: '/analysis', label: '运动分析' },
   { href: '/stats', label: '运动统计' },
+  { href: '/settings', label: '设置' },
 ] as const;
 
 function isActive(href: string, pathname: string): boolean {

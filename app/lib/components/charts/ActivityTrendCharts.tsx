@@ -42,8 +42,36 @@ const PACE_MAX_SEC = 900;   // 15:00 /km
 
 const FIVE_MIN_SEC = 300;
 
-/** 趋势图统一配色，与页面 zinc 中性风格协调 */
-const TREND_CHART_COLOR = '#52525b'; // zinc-600，与 text-zinc-600 一致
+/** 彩色配色方案 */
+const CHART_COLORS = {
+  heartRate: {
+    light: '#ef4444',    // red-500
+    dark: '#f87171',     // red-400
+  },
+  pace: {
+    light: '#3b82f6',    // blue-500
+    dark: '#60a5fa',     // blue-400
+  },
+  cadence: {
+    light: '#22c55e',    // green-500
+    dark: '#4ade80',     // green-400
+  },
+  stride: {
+    light: '#a855f7',    // purple-500
+    dark: '#c084fc',     // purple-400
+  },
+};
+
+/** 检测是否为暗色模式 */
+function isDarkMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  return document.documentElement.classList.contains('dark');
+}
+
+/** 获取当前主题的颜色 */
+function getThemeColor(colorSet: { light: string; dark: string }): string {
+  return isDarkMode() ? colorSet.dark : colorSet.light;
+}
 
 /** 配速秒/公里 → M:SS 显示 */
 function formatPaceForAxis(sec: number): string {
@@ -58,14 +86,19 @@ function buildLineChart(
   yData: (number | null)[],
   yName: string,
   unit: string,
-  color: string
+  colorSet: { light: string; dark: string }
 ) {
   const chart = echarts.init(chartRef);
+  const color = getThemeColor(colorSet);
+  
   const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis',
       confine: true,
       appendToBody: false,
+      backgroundColor: isDarkMode() ? '#27272a' : '#ffffff',
+      borderColor: isDarkMode() ? '#3f3f46' : '#e4e4e7',
+      textStyle: { color: isDarkMode() ? '#fafafa' : '#18181b' },
       formatter: (params: unknown) => {
         const p = Array.isArray(params) ? params[0] : null;
         if (!p) return '';
@@ -81,6 +114,7 @@ function buildLineChart(
       axisLabel: {
         fontSize: 10,
         rotate: 45,
+        color: isDarkMode() ? '#a1a1aa' : '#71717a',
         interval: (index: number) => {
           if (index === 0) return true;
           const curr = xData[index];
@@ -88,12 +122,19 @@ function buildLineChart(
           return Math.floor(curr / FIVE_MIN_SEC) > Math.floor(prev / FIVE_MIN_SEC);
         },
       },
+      axisLine: { lineStyle: { color: isDarkMode() ? '#3f3f46' : '#e4e4e7' } },
       boundaryGap: true,
     },
     yAxis: {
       type: 'value',
       name: yName,
-      axisLabel: { formatter: (v: number) => (unit === ' bpm' || unit === ' 步/分' ? `${Math.round(v)}` : `${v}`) },
+      nameTextStyle: { color: isDarkMode() ? '#a1a1aa' : '#71717a' },
+      axisLabel: { 
+        formatter: (v: number) => (unit === ' bpm' || unit === ' 步/分' ? `${Math.round(v)}` : `${v}`),
+        color: isDarkMode() ? '#a1a1aa' : '#71717a',
+      },
+      axisLine: { lineStyle: { color: isDarkMode() ? '#3f3f46' : '#e4e4e7' } },
+      splitLine: { lineStyle: { color: isDarkMode() ? '#27272a' : '#f4f4f5' } },
     },
     series: [
       {
@@ -101,8 +142,14 @@ function buildLineChart(
         data: yData,
         smooth: true,
         symbol: 'none',
-        lineStyle: { width: 2, color },
-        areaStyle: { opacity: 0.12, color },
+        lineStyle: { width: 2.5, color },
+        areaStyle: { 
+          opacity: 0.2, 
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color },
+            { offset: 1, color: isDarkMode() ? '#18181b' : '#ffffff' },
+          ]),
+        },
       },
     ],
   };
@@ -117,11 +164,16 @@ function buildLineChart(
 
 function buildPaceChart(chartRef: HTMLDivElement, xData: number[], paceData: (number | null)[]) {
   const chart = echarts.init(chartRef);
+  const color = getThemeColor(CHART_COLORS.pace);
+  
   const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis',
       confine: true,
       appendToBody: false,
+      backgroundColor: isDarkMode() ? '#27272a' : '#ffffff',
+      borderColor: isDarkMode() ? '#3f3f46' : '#e4e4e7',
+      textStyle: { color: isDarkMode() ? '#fafafa' : '#18181b' },
       formatter: (params: unknown) => {
         const p = Array.isArray(params) ? params[0] : null;
         if (!p) return '';
@@ -138,6 +190,7 @@ function buildPaceChart(chartRef: HTMLDivElement, xData: number[], paceData: (nu
       axisLabel: {
         fontSize: 10,
         rotate: 45,
+        color: isDarkMode() ? '#a1a1aa' : '#71717a',
         interval: (index: number) => {
           if (index === 0) return true;
           const curr = xData[index];
@@ -145,15 +198,20 @@ function buildPaceChart(chartRef: HTMLDivElement, xData: number[], paceData: (nu
           return Math.floor(curr / FIVE_MIN_SEC) > Math.floor(prev / FIVE_MIN_SEC);
         },
       },
+      axisLine: { lineStyle: { color: isDarkMode() ? '#3f3f46' : '#e4e4e7' } },
       boundaryGap: true,
     },
     yAxis: {
       type: 'value',
       name: '配速',
+      nameTextStyle: { color: isDarkMode() ? '#a1a1aa' : '#71717a' },
       min: 0,
       axisLabel: {
         formatter: (v: number) => formatPaceForAxis(v),
+        color: isDarkMode() ? '#a1a1aa' : '#71717a',
       },
+      axisLine: { lineStyle: { color: isDarkMode() ? '#3f3f46' : '#e4e4e7' } },
+      splitLine: { lineStyle: { color: isDarkMode() ? '#27272a' : '#f4f4f5' } },
     },
     series: [
       {
@@ -161,8 +219,14 @@ function buildPaceChart(chartRef: HTMLDivElement, xData: number[], paceData: (nu
         data: paceData,
         smooth: true,
         symbol: 'none',
-        lineStyle: { width: 2, color: TREND_CHART_COLOR },
-        areaStyle: { opacity: 0.12, color: TREND_CHART_COLOR },
+        lineStyle: { width: 2.5, color },
+        areaStyle: { 
+          opacity: 0.2, 
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color },
+            { offset: 1, color: isDarkMode() ? '#18181b' : '#ffffff' },
+          ]),
+        },
       },
     ],
   };
@@ -208,17 +272,17 @@ export default function ActivityTrendCharts({ records }: ActivityTrendChartsProp
 
     if (hrRef.current && hrData.some((v) => v != null)) {
       cleanups.push(
-        buildLineChart(hrRef.current, xData, hrData, '心率', ' bpm', TREND_CHART_COLOR)
+        buildLineChart(hrRef.current, xData, hrData, '心率', ' bpm', CHART_COLORS.heartRate)
       );
     }
     if (cadenceRef.current && cadenceData.some((v) => v != null)) {
       cleanups.push(
-        buildLineChart(cadenceRef.current, xData, cadenceData, '步频', ' 步/分', TREND_CHART_COLOR)
+        buildLineChart(cadenceRef.current, xData, cadenceData, '步频', ' 步/分', CHART_COLORS.cadence)
       );
     }
     if (strideRef.current && strideData.some((v) => v != null)) {
       cleanups.push(
-        buildLineChart(strideRef.current, xData, strideData, '步幅', ' cm', TREND_CHART_COLOR)
+        buildLineChart(strideRef.current, xData, strideData, '步幅', ' cm', CHART_COLORS.stride)
       );
     }
     if (paceRef.current && paceData.some((v) => v != null)) {

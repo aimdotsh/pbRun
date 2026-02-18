@@ -154,8 +154,8 @@ export default function ActivityDetailClient({ activity, laps, records }: Activi
                 </tr>
               </thead>
               <tbody>
-                {laps.map((lap) => (
-                  <tr key={lap.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                {laps.map((lap, idx) => (
+                  <tr key={lap.id ?? `lap-${idx}`} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                     <td className="px-3 py-2 font-medium">{lap.lap_index}</td>
                     <td className="px-3 py-2">{formatDistanceFromMeters(lap.distance)}</td>
                     <td className="px-3 py-2">{formatDuration(lap.duration)}</td>

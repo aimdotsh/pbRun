@@ -25,7 +25,7 @@ class DatabaseManager {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS activities (
         -- 基础信息
-        activity_id INTEGER PRIMARY KEY,              -- 活动ID（主键）
+        activity_id TEXT PRIMARY KEY,                  -- 活动ID（主键，支持 Garmin 数字 ID 和 COROS 字符串 ID）
         name TEXT NOT NULL,                           -- 活动名称
         activity_type TEXT DEFAULT 'running',         -- 活动类型（默认：跑步）
         sport_type TEXT,                              -- 运动主类型（FIT sport，如跑步、健身器械）
@@ -134,6 +134,7 @@ class DatabaseManager {
       if (!/duplicate column name/i.test(e.message)) throw e;
     }
     const newActivityColumns = [
+      ['source', 'TEXT'],
       ['avg_grade', 'REAL'], ['avg_pos_grade', 'REAL'], ['avg_neg_grade', 'REAL'], ['max_pos_grade', 'REAL'], ['max_neg_grade', 'REAL'],
       ['total_training_effect', 'REAL'], ['total_anaerobic_training_effect', 'REAL'], ['normalized_power', 'INTEGER'], ['training_stress_score', 'INTEGER'], ['intensity_factor', 'REAL'],
       ['avg_altitude', 'REAL'], ['max_altitude', 'REAL'], ['min_altitude', 'REAL'],
@@ -147,11 +148,138 @@ class DatabaseManager {
       }
     }
 
+    // 迁移：检查 activity_id 列类型，如果是 INTEGER 则需要重建表为 TEXT
+    // 以支持 COROS 的字符串 ID
+    try {
+      const tableInfo = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='activities'").get();
+      if (tableInfo && tableInfo.sql && tableInfo.sql.includes('activity_id INTEGER PRIMARY KEY')) {
+        console.log('Migrating activities table: activity_id INTEGER -> TEXT');
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS activities_new (
+            activity_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            activity_type TEXT DEFAULT 'running',
+            sport_type TEXT,
+            sub_sport_type TEXT,
+            start_time DATETIME NOT NULL,
+            start_time_local DATETIME NOT NULL,
+            distance REAL NOT NULL,
+            duration INTEGER NOT NULL,
+            moving_time INTEGER NOT NULL,
+            elapsed_time INTEGER NOT NULL,
+            average_pace REAL,
+            average_speed REAL,
+            max_speed REAL,
+            average_heart_rate INTEGER,
+            max_heart_rate INTEGER,
+            average_cadence INTEGER,
+            max_cadence INTEGER,
+            average_stride_length REAL,
+            average_vertical_oscillation REAL,
+            average_vertical_ratio REAL,
+            average_ground_contact_time REAL,
+            average_gct_balance REAL,
+            average_step_rate_loss REAL,
+            average_step_rate_loss_percent REAL,
+            average_power INTEGER,
+            max_power INTEGER,
+            average_power_to_weight REAL,
+            max_power_to_weight REAL,
+            total_ascent REAL,
+            total_descent REAL,
+            avg_grade REAL,
+            avg_pos_grade REAL,
+            avg_neg_grade REAL,
+            max_pos_grade REAL,
+            max_neg_grade REAL,
+            total_training_effect REAL,
+            total_anaerobic_training_effect REAL,
+            normalized_power INTEGER,
+            training_stress_score INTEGER,
+            intensity_factor REAL,
+            avg_altitude REAL,
+            max_altitude REAL,
+            min_altitude REAL,
+            time_in_hr_zone TEXT,
+            time_in_speed_zone TEXT,
+            time_in_cadence_zone TEXT,
+            time_in_power_zone TEXT,
+            calories INTEGER,
+            average_temperature REAL,
+            vdot_value REAL,
+            training_load INTEGER,
+            source TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        this.db.exec(`
+          INSERT INTO activities_new SELECT 
+            CAST(activity_id AS TEXT), name, activity_type, sport_type, sub_sport_type,
+            start_time, start_time_local, distance, duration, moving_time, elapsed_time,
+            average_pace, average_speed, max_speed,
+            average_heart_rate, max_heart_rate,
+            average_cadence, max_cadence, average_stride_length,
+            average_vertical_oscillation, average_vertical_ratio, average_ground_contact_time,
+            average_gct_balance, average_step_rate_loss, average_step_rate_loss_percent,
+            average_power, max_power, average_power_to_weight, max_power_to_weight,
+            total_ascent, total_descent,
+            avg_grade, avg_pos_grade, avg_neg_grade, max_pos_grade, max_neg_grade,
+            total_training_effect, total_anaerobic_training_effect,
+            normalized_power, training_stress_score, intensity_factor,
+            avg_altitude, max_altitude, min_altitude,
+            time_in_hr_zone, time_in_speed_zone, time_in_cadence_zone, time_in_power_zone,
+            calories, average_temperature, vdot_value, training_load, source,
+            created_at, updated_at
+          FROM activities
+        `);
+        this.db.exec('DROP TABLE activities');
+        this.db.exec('ALTER TABLE activities_new RENAME TO activities');
+        // 重建索引
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_activities_start_time ON activities(start_time)`);
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_activities_activity_type ON activities(activity_type)`);
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_activities_vdot ON activities(vdot_value)`);
+        console.log('Migration completed: activity_id is now TEXT');
+      }
+    } catch (e) {
+      console.error('Migration error (may be OK if table is already migrated):', e.message);
+    }
+
+    // 迁移 activity_laps 表的 activity_id 列
+    try {
+      const lapsInfo = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='activity_laps'").get();
+      if (lapsInfo && lapsInfo.sql && lapsInfo.sql.includes('activity_id INTEGER NOT NULL')) {
+        console.log('Migrating activity_laps table: activity_id INTEGER -> TEXT');
+        this.db.exec('CREATE TABLE activity_laps_new AS SELECT id, CAST(activity_id AS TEXT) as activity_id, lap_index, duration, cumulative_time, moving_time, distance, average_pace, average_pace_gap, best_pace, average_speed, average_moving_pace, average_heart_rate, max_heart_rate, total_ascent, total_descent, average_power, average_power_to_weight, max_power, max_power_to_weight, average_cadence, max_cadence, average_stride_length, average_ground_contact_time, average_gct_balance, average_vertical_oscillation, average_vertical_ratio, calories, average_temperature, avg_grade, avg_pos_grade, avg_neg_grade, max_pos_grade, max_neg_grade, time_in_hr_zone, time_in_speed_zone, time_in_cadence_zone, time_in_power_zone, lap_trigger, start_time FROM activity_laps');
+        this.db.exec('DROP TABLE activity_laps');
+        this.db.exec('ALTER TABLE activity_laps_new RENAME TO activity_laps');
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_laps_activity_id ON activity_laps(activity_id)`);
+        console.log('Migration completed: activity_laps.activity_id is now TEXT');
+      }
+    } catch (e) {
+      console.error('activity_laps migration error:', e.message);
+    }
+
+    // 迁移 activity_records 表的 activity_id 列
+    try {
+      const recordsInfo = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='activity_records'").get();
+      if (recordsInfo && recordsInfo.sql && recordsInfo.sql.includes('activity_id INTEGER NOT NULL')) {
+        console.log('Migrating activity_records table: activity_id INTEGER -> TEXT');
+        this.db.exec('CREATE TABLE activity_records_new AS SELECT id, CAST(activity_id AS TEXT) as activity_id, record_index, elapsed_sec, heart_rate, cadence, step_length, pace FROM activity_records');
+        this.db.exec('DROP TABLE activity_records');
+        this.db.exec('ALTER TABLE activity_records_new RENAME TO activity_records');
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_records_activity_id ON activity_records(activity_id)`);
+        console.log('Migration completed: activity_records.activity_id is now TEXT');
+      }
+    } catch (e) {
+      console.error('activity_records migration error:', e.message);
+    }
+
     // Create activity_laps table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS activity_laps (
         id INTEGER PRIMARY KEY AUTOINCREMENT,         -- 分段ID（主键，自增）
-        activity_id INTEGER NOT NULL,                 -- 活动ID（外键）
+        activity_id TEXT NOT NULL,                    -- 活动ID（外键，支持字符串 ID）
         lap_index INTEGER NOT NULL,                   -- 分段编号
 
         -- 时间数据
@@ -219,6 +347,7 @@ class DatabaseManager {
 
     // 为已存在的 activity_laps 表添加新列（兼容旧库）
     const newLapColumns = [
+      ['average_step_rate_loss', 'REAL'], ['average_step_rate_loss_percent', 'REAL'],
       ['avg_grade', 'REAL'], ['avg_pos_grade', 'REAL'], ['avg_neg_grade', 'REAL'], ['max_pos_grade', 'REAL'], ['max_neg_grade', 'REAL'],
       ['time_in_hr_zone', 'TEXT'], ['time_in_speed_zone', 'TEXT'], ['time_in_cadence_zone', 'TEXT'], ['time_in_power_zone', 'TEXT'],
       ['lap_trigger', 'TEXT'], ['start_time', 'DATETIME']
@@ -245,7 +374,7 @@ class DatabaseManager {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS activity_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        activity_id INTEGER NOT NULL,
+        activity_id TEXT NOT NULL,
         record_index INTEGER NOT NULL,
         elapsed_sec REAL NOT NULL,
         heart_rate INTEGER,

@@ -138,33 +138,33 @@ export function getMonthSummaries(limit?: number, offset?: number): MonthSummary
 /**
  * Get a single activity by ID.
  */
-export function getActivityById(activityId: number): Activity | null {
+export function getActivityById(activityId: string | number): Activity | null {
   const db = getDatabase();
   const stmt = db.prepare('SELECT * FROM activities WHERE activity_id = ?');
-  const result = stmt.get(activityId) as Activity | undefined;
+  const result = stmt.get(String(activityId)) as Activity | undefined;
   return result || null;
 }
 
 /**
  * Get laps for an activity.
  */
-export function getActivityLaps(activityId: number): ActivityLap[] {
+export function getActivityLaps(activityId: string | number): ActivityLap[] {
   const db = getDatabase();
   const stmt = db.prepare(
     'SELECT * FROM activity_laps WHERE activity_id = ? ORDER BY lap_index'
   );
-  return stmt.all(activityId) as ActivityLap[];
+  return stmt.all(String(activityId)) as ActivityLap[];
 }
 
 /**
  * Get record-level data for an activity (heart rate / cadence / stride trend).
  */
-export function getActivityRecords(activityId: number): ActivityRecord[] {
+export function getActivityRecords(activityId: string | number): ActivityRecord[] {
   const db = getDatabase();
   const stmt = db.prepare(
     'SELECT * FROM activity_records WHERE activity_id = ? ORDER BY record_index'
   );
-  return stmt.all(activityId) as ActivityRecord[];
+  return stmt.all(String(activityId)) as ActivityRecord[];
 }
 
 /**
@@ -315,7 +315,7 @@ export function getPersonalRecords(period: 'week' | 'month' | 'year' | 'total' |
     distanceMeters: a.distance < 1000 ? a.distance * 1000 : a.distance,
   }));
 
-  const getLaps = (activityId: number) => getActivityLaps(activityId);
+  const getLaps = (activityId: string | number) => getActivityLaps(activityId);
   const records: PersonalRecordItem[] = PR_DISTANCES.map(({ meters, label }) => {
     let best: { durationSeconds: number; achievedAt: string } | null = null;
     for (const a of activities) {
