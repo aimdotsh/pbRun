@@ -41,6 +41,10 @@
 
 ---
 
+<img src="https://github.com/aimdotsh/pbRun/blob/main/docs/images/setting.pic.jpg?raw=true" alt="image-20260218152038489" style="zoom:50%;" />
+
+<img src="https://github.com/aimdotsh/pbRun/blob/main/docs/images/qushi.pic.jpg?raw=true" alt="image-20260218152119995" style="zoom:50%;" />
+
 ## 快速开始
 
 ### 前置要求
